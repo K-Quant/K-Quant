@@ -1,0 +1,4 @@
+{
+	"data_dir":"../finkb_dataset/",
+	"news_file":"../finkb_dataset/test.json"
+} 
