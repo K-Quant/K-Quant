@@ -1,6 +1,6 @@
 # Dynamic Company Relation Extraction
 
-This part includes knowledge in $Meso$, $Micro$ hierarchy. The extraction schema is defined as (company1, relation, company2, timestamp). For example, (Xiaomi, compete, Huawei, 2023.02.05).
+The extraction schema is defined as (company1, relation, company2, timestamp). For example, (Xiaomi, compete, Huawei, 2023.02.05).
 
 ## 0. The directory structure of the code
 
@@ -89,7 +89,7 @@ https://drive.google.com/drive/folders/1KjvVLkzgJHgqn_N1toOK_LMEEAYBhNc3
 
 And move the models to the location that the directory structure of the code shows.
 
-## 3. Do company relation extraction
+## 3. Directly do company relation extraction
 
 ```bash
 python demo.py \
