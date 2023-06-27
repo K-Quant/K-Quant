@@ -3,14 +3,14 @@ from qlib.data.dataset import DatasetH
 from qlib.data.dataset.handler import DataHandlerLP
 from qlib.config import REG_US, REG_CN
 import qlib
-from dataloader import DataLoader, DataLoader_v3
+from utils.dataloader import DataLoader
 import numpy as np
 import pandas as pd
 import torch
 import argparse
 from tqdm import tqdm
 from qlib.contrib.model.pytorch_transformer import Transformer
-from model import MLP, HIST, GRU, LSTM, GAT, ALSTM, SFM, RSR, FC_model_no_F_v1_18
+from models.model import MLP, HIST, GRU, LSTM, GAT, ALSTM, SFM, RSR
 import json
 
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
@@ -69,43 +69,7 @@ def get_model(model_name):
     if model_name.upper() == 'RSR':
         return RSR
 
-    if model_name.upper() == 'FC_MODEL_NO_F_V1_18':
-        return FC_model_no_F_v1_18
-
     raise ValueError('unknown model name `%s`' % model_name)
-
-
-# def create_test_loaders(args):
-#     """
-#     load qlib alpha360 data and split into train, validation and test loader
-#     :param args:
-#     :return:
-#     """
-#     # split those three dataset into train, valid and test
-#     start_time = datetime.datetime.strptime(args.test_start_date, '%Y-%m-%d')
-#     end_time = datetime.datetime.strptime(args.test_end_date, '%Y-%m-%d')
-#
-#     hanlder = {'class': 'Alpha360', 'module_path': 'qlib.contrib.data.handler',
-#                 'kwargs': {'start_time': start_time, 'end_time': end_time, 'fit_start_time': start_time,
-#                             'fit_end_time': end_time, 'instruments': args.data_set, 'infer_processors': [
-#                         {'class': 'RobustZScoreNorm', 'kwargs': {'fields_group': 'feature', 'clip_outlier': True}},
-#                         {'class': 'Fillna', 'kwargs': {'fields_group': 'feature'}}],
-#                             'learn_processors': [{'class': 'DropnaLabel'},
-#                                                 {'class': 'CSRankNorm', 'kwargs': {'fields_group': 'label'}}],
-#                             'label': ['Ref($close, -1) / $close - 1']}}
-#     segments = {'test': (args.test_start_date, args.test_end_date)}
-#     # get dataset from qlib
-#     dataset = DatasetH(hanlder, segments)
-#
-#     df_test = dataset.prepare(["test"], col_set=["feature", "label"], data_key=DataHandlerLP.DK_L, )[0]
-#
-#     # market value of every day from 07 to 20
-#     # the market value and stock_index added to each line
-#
-#     test_loader = DataLoader_v3(df_test["feature"], df_test["label"],
-#                                 pin_memory=True, device=device)
-#
-#     return test_loader
 
 
 def create_test_loaders(args):
