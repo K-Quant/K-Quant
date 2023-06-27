@@ -7,7 +7,7 @@ The extraction schema is defined as (company1, relation, company2, timestamp). F
 ```shell
 .
 ├── OpenNRE         # Please download and install the OpenNRE project and move the folder to this location
-└── HiDy           # This is our project
+└── K-Quant           # This is our project
     ├── company_rel   # This is the company relation extraction folder
         ├── data         # Dataset
         ├── pretrain      # Please download and move the folder to this location
