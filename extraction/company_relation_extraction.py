@@ -32,7 +32,7 @@ def prediction_mode():
     ckpt = dirname + '/ckpt/compay_rel_bert_softmax.pth.tar'
 
     # Check data
-    rel2id = json.load(open(dirname + '/data/comp_rel2id.json'))
+    rel2id = json.load(open(dirname + '../Data/comp_rel2id.json'))
 
     # Define the sentence encoder
     sentence_encoder = opennre.encoder.BERTEncoder(
@@ -48,7 +48,7 @@ def prediction_mode():
     framework = opennre.framework.SentenceRE(
         train_path=None,
         val_path=None,
-        test_path=dirname + '/data/comp_pred.txt',
+        test_path=dirname + '../Data/comp_pred.txt',
         model=model,
         ckpt=ckpt,
         batch_size=32,  # Modify the batch size w.r.t. your device
@@ -63,7 +63,7 @@ def prediction_mode():
     for pred in pred_result:
         print(dicct[str(pred)])
     # Save the prediction
-    with open(dirname + "/data/pre_result.json", 'w') as f:
+    with open(dirname + "../Data/pre_result.json", 'w') as f:
         json.dump(pred_result, f)
 
 # prediction_mode()

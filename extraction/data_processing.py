@@ -78,25 +78,25 @@ def prepare_company_relation(original_test_json_path, input_mode):
         sentences_dict = json.load(f)
     sentences_df = pd.DataFrame(sentences_dict)
     sentences_df = remove_blanks(sentences_df)
-    sentences_df.to_csv(dirname + '/data/final_merge.csv', index=False, mode="w")
+    sentences_df.to_csv(dirname + '../Data/final_merge.csv', index=False, mode="w")
     if input_mode == "default":
         sentences_df = sentences_df.drop(columns=['time', 'head_code', 'tail_code', 'src'])
     else:
         sentences_df = sentences_df.drop(columns=['head_code', 'tail_code'])
 
-    sentences_df.to_csv(dirname + '/data/company_relation.txt', sep='\t', header=None, index=False, mode="w")
+    sentences_df.to_csv(dirname + '../Data/company_relation.txt', sep='\t', header=None, index=False, mode="w")
     return
 
 
 def prepare_dataset(divide_label=False):
-    f = open(dirname + '/data/comp_pred.txt', 'w+')
+    f = open(dirname + '../Data/comp_pred.txt', 'w+')
 
     if divide_label:
-        f1 = open(dirname + '/data/comp_train.txt', "w+")
-        f2 = open(dirname + '/data/comp_test.txt', 'w+')
+        f1 = open(dirname + '../Data/comp_train.txt', "w+")
+        f2 = open(dirname + '../Data/comp_test.txt', 'w+')
 
     # Should firstly run function "prepare_company_relation"
-    company_relation = dirname + "/data/company_relation.txt"
+    company_relation = dirname + "../Data/company_relation.txt"
 
     rel_set = []
     with codecs.open(company_relation, 'r', 'utf-8') as tfc:
@@ -152,7 +152,7 @@ def prepare_dataset(divide_label=False):
 
 
 def obtain_final_predictions(pred_result_json_path, save_csv_path):
-    company_df = pd.read_csv(dirname + "/data/final_merge.csv")
+    company_df = pd.read_csv(dirname + "../Data/final_merge.csv")
     print(len(company_df))
     # read predicted results
     with open(pred_result_json_path, "r") as f:

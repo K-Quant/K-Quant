@@ -17,7 +17,7 @@ def run_extraction(original_news_path, extracted_data_path, input_mode):
     flag = user_input_parse(input_mode, original_news_path, file_mode)
 
     if flag:
-        prepare_company_relation(dirname + "/data/news_sententces_set.json", input_mode)
+        prepare_company_relation(dirname + "../Data/news_sententces_set.json", input_mode)
 
         '''
         # If the user choose the training and testing accuracy mode:
@@ -30,7 +30,7 @@ def run_extraction(original_news_path, extracted_data_path, input_mode):
         print(1)
         prediction_mode()
         print(2)
-        obtain_final_predictions(dirname + "/data/pre_result.json", extracted_data_path)
+        obtain_final_predictions(dirname + "../Data/pre_result.json", extracted_data_path)
         print(3)
         # You can just show the file "final_results.csv" to the front-end.
     else:

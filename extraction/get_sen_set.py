@@ -70,12 +70,12 @@ def split_sen(s, name_dict, code_dict, src="default", time="default"):
 def sentence_set(raw_file_list):
     name_dict = []
     code_dict = []
-    file = open(dirname + '/data/company_full_name.json')
+    file = open(dirname + '../Data/company_full_name.json')
     for line in file:
         x = ast.literal_eval(line)
         name_dict.append(x['name'])
 
-    file = open(dirname + '/data/company_full_name.json')
+    file = open(dirname + '../Data/company_full_name.json')
     for line in file:
         x = ast.literal_eval(line)
         code_dict.append(x['code'])
@@ -90,7 +90,7 @@ def sentence_set(raw_file_list):
     print(len(total_set))
 
 
-    json.dump(total_set, open(dirname + '/data/news_sententces_set.json', 'w', encoding='utf8'),
+    json.dump(total_set, open(dirname + '../Data/news_sententces_set.json', 'w', encoding='utf8'),
               indent=1, ensure_ascii=False)
 
 
@@ -101,12 +101,12 @@ def user_input_parse(file_type, raw_file_list, input_mode="default"):
 
     name_dict = []
     code_dict = []
-    file = open(dirname + '/data/company_full_name.json')
+    file = open(dirname + '../Data/company_full_name.json')
     for line in file:
         x = ast.literal_eval(line)
         name_dict.append(x['name'])
 
-    file = open(dirname + '/data/company_full_name.json')
+    file = open(dirname + '../Data/company_full_name.json')
     for line in file:
         x = ast.literal_eval(line)
         code_dict.append(x['code'])
@@ -144,7 +144,7 @@ def user_input_parse(file_type, raw_file_list, input_mode="default"):
 
     if len(total_set) == 0:
         return False
-    json.dump(total_set, open(dirname + '/data/news_sententces_set.json', 'w', encoding='utf8'),
+    json.dump(total_set, open(dirname + '../Data/news_sententces_set.json', 'w', encoding='utf8'),
               indent=1, ensure_ascii=False)
 
     return True

@@ -16,11 +16,11 @@ def get_pose(text, E_name):
 
 
 # 处理后数据,处理完了再分训练集和验证集
-f = open(dirname + '/data/comp_all.txt', "w+")
+f = open(dirname + '../Data/comp_all.txt', "w+")
 # f1 = open('comp_train.txt', "w+")
 # f2 = open('comp_test.txt', 'w+')
 # 原始数据,数据来源：https://github.com/buppt/ChineseNRE
-company_relation = dirname + "/data/excel2txt.txt"
+company_relation = dirname + "../Data/excel2txt.txt"
 
 rel_set = []
 with codecs.open(company_relation, 'r', 'utf-8') as tfc:

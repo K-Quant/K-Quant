@@ -18,8 +18,8 @@ import akshare as ak
 import sys
 import argparse
 
-sys.path.append('./company_rel')
-sys.path.append('./DART')
+sys.path.append('./extraction')
+sys.path.append('./fusion')
 # import demo
 from demo import run_extraction
 
@@ -78,21 +78,16 @@ def write_list_to_json(list,json_file_name):
     with open(json_file_name,'w') as f:
         json.dump(list,f)
 
-def dynamic_pipline(start_date_str, required_days, original_news_path, extracted_data_path, input_format, fusion_data_path):
-    get_tushare_news_n_days(start_date_str, required_days)
+def dynamic_pipline(original_news_path, extracted_data_path, input_format, fusion_data_path):
+    # get_tushare_news_n_days(start_date_str, required_days)
     run_extraction(original_news_path, extracted_data_path, input_format)
     df = fusion(extracted_data_path)
     df.to_csv(fusion_data_path)
-    jdata = df.to_json(orient='records', force_ascii=False)
-    return jdata
+    return
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--start_date", type=str, default=None,
-                        help="The start date of news you want to extract knowledge from.")
-    parser.add_argument("--required_days", type=str, default=None,
-                        help="The required days interval.")
     parser.add_argument("--original_news_path", type=str, default=None,
                         help="The path of input text data that you want to load.")
     parser.add_argument("--extracted_data_path", type=str, default=None,
@@ -103,4 +98,4 @@ if __name__ == "__main__":
                         help="The path of fusion knowledge that you want to save in.")
     args = parser.parse_args()
 
-    dynamic_pipline(args.start_date, args.required_days, args.original_news_path, args.extracted_data_path, args.input_format, args.fusion_data_path)
+    dynamic_pipline(args.original_news_path, args.extracted_data_path, args.input_format, args.fusion_data_path)

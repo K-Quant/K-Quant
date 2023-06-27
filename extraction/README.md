@@ -8,7 +8,7 @@ The extraction schema is defined as (company1, relation, company2, timestamp). F
 .
 ├── OpenNRE         # Please download and install the OpenNRE project and move the folder to this location
 └── K-Quant           # This is our project
-    ├── company_rel   # This is the company relation extraction folder
+    ├── extraction   # This is the company relation extraction folder
         ├── data         # Dataset
         ├── pretrain      # Please download and move the folder to this location
             ├── ckpt3      # Please download and move the folder to this location
@@ -93,8 +93,8 @@ And move the models to the location that the directory structure of the code sho
 
 ```bash
 python demo.py \
-    --original_news_path ./data/news.json \
-    --extracted_data_path ./data/data_extraction.json \
+    --original_news_path ../Data/news.json \
+    --extracted_data_path ../Data/data_extraction.json \
     --input_format "json"
 ```
 
