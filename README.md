@@ -15,11 +15,11 @@ If you find this system helpful in your research, please consider citing our pap
 
 ## Main Features
 ![overview](logo/demo_overview.png)
-The main features of K-Quant are listed below:
+The main features of K-Quant:
 
-1. xxx
-2. xxx
-3. xxx
+1. Dynamic Financial KB Construction
+2. Quantitive Investment Framework
+3. Evaluation and Interpretability Methods
 
 <!-- TOC -->
 
