@@ -14,7 +14,7 @@ If you find this system helpful in your research, please consider citing our pap
 
 
 ## Main Features
-
+![overview](logo/demo_overview.png)
 The main features of K-Quant are listed below:
 
 1. xxx
