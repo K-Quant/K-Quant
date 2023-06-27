@@ -1,11 +1,25 @@
 # TE-DyGE: Temporal Evolution-enhanced Dynamic Graph Embedding Network
+##### Contributors: Liane WANG
+> Liping Wang, Yanyan Shen, and Lei Chen. 2023. TE-DyGE: Temporal Evolution-Enhanced Dynamic Graph Embedding Network. In Database Systems for Advanced Applications: 28th International Conference, DASFAA 2023, Tianjin, China, April 17–20, 2023, Proceedings, Part III. Springer-Verlag, Berlin, Heidelberg, 183–198. https://doi.org/10.1007/978-3-031-30675-4_13
+
+Please cite our papers:
+@inproceedings{10.1007/978-3-031-30675-4_13,
+author = {Wang, Liping and Shen, Yanyan and Chen, Lei},
+title = {TE-DyGE: Temporal Evolution-Enhanced Dynamic Graph Embedding Network},
+year = {2023},
+url = {https://doi.org/10.1007/978-3-031-30675-4_13},
+booktitle = {Database Systems for Advanced Applications: 28th International Conference, DASFAA 2023, Tianjin, China, April 17–20, 2023, Proceedings, Part III},
+pages = {183–198},
+numpages = {16},
+keywords = {Representation Learning, Dynamic Graphs},
+}
+
 ## Framework
 
-
 ![TE-DyGE: Temporal Evolution-enhanced Dynamic Graph Embedding Network](tedyge.png)
-## Implementation
 
-https://github.com/liane886/TE-DyGE
+## Implementation
+[TE-DyGE](https://github.com/liane886/TE-DyGE)
 
 ## Setup
 ```
