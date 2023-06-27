@@ -54,6 +54,9 @@ The main features of K-Quant:
 
 ### Data Format
 
-## Related Work
+## Published Papers
+
+> Liping Wang, Yanyan Shen, and Lei Chen. 2023. TE-DyGE: Temporal Evolution-Enhanced Dynamic Graph Embedding Network. In Database Systems for Advanced Applications: 28th International Conference, DASFAA 2023, Tianjin, China, April 17–20, 2023, Proceedings, Part III. Springer-Verlag, Berlin, Heidelberg, 183–198. https://doi.org/10.1007/978-3-031-30675-4_13
+## Related Works
 
 ## Acknowledgement
