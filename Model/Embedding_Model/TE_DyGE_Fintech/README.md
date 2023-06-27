@@ -2,6 +2,31 @@
 ##### Contributors: Liane WANG
 > Liping Wang, Yanyan Shen, and Lei Chen. 2023. TE-DyGE: Temporal Evolution-Enhanced Dynamic Graph Embedding Network. In Database Systems for Advanced Applications: 28th International Conference, DASFAA 2023, Tianjin, China, April 17–20, 2023, Proceedings, Part III. Springer-Verlag, Berlin, Heidelberg, 183–198. https://doi.org/10.1007/978-3-031-30675-4_13
 
+## Framework
+
+![TE-DyGE: Temporal Evolution-enhanced Dynamic Graph Embedding Network](tedyge.png)
+
+## Implementation
+[TE-DyGE](https://github.com/liane886/TE-DyGE)
+
+## Setup
+```
+conda env create -f TE_DyGE.yml
+```
+## Example Usage
+To reproduce the experiments on the EComm dataset, simply run:
+```
+python run_script.py
+```
+## Dataset 
+Statistics of dataset:
+
+![dataset](data/Dataset.png)
+
+## Results
+Results for each snapshot can be found in the 'logs' file.
+
+## Citation 
 Please cite our paper:
 ```angular2
 @inproceedings{10.1007/978-3-031-30675-4_13,
@@ -15,29 +40,6 @@ numpages = {16},
 keywords = {Representation Learning, Dynamic Graphs},
 }
 ```
-## Framework
-
-![TE-DyGE: Temporal Evolution-enhanced Dynamic Graph Embedding Network](tedyge.png)
-
-## Implementation
-[TE-DyGE](https://github.com/liane886/TE-DyGE)
-
-## Setup
-```
-conda env create -f TE_DyGE.yml
-```
-## Example Usage
-To reproduce the experiments on EComm dataset, simply run:
-```
-python run_script.py
-```
-## Dataset 
-Statistics of dataset:
-
-![dataset](data/Dataset.png)
-
-## Results
-Results for each snapshpot can be found in the 'logs' file.
 
 ## Acknowledgement
 The original version of this code base was originally forked from [DySAT] https://github.com/aravindsankar28/DySAT 
