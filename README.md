@@ -1,4 +1,4 @@
-# K-Quant: A Platform of Temporal Financial Knowledge Base Construction
+# K-Quant: A Platform of Temporal Financial Knowledge-enhanced Quantitative Investment
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://img.shields.io/badge/platform-win%20%7C%20linux-yellow.svg)
