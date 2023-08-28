@@ -1,3 +1,7 @@
+"""
+classical single-step stock forecasting task
+follow HIST repo
+"""
 import torch
 import torch.optim as optim
 import os
@@ -10,19 +14,25 @@ import numpy as np
 from tqdm import tqdm
 import pandas as pd
 from torch.utils.tensorboard import SummaryWriter
-from models.model import MLP, HIST, GRU, LSTM, GAT, ALSTM, SFM, RSR, relation_GATs, relation_GATs_3heads
+import sys
+sys.path.insert(0, sys.path[0]+"/../")
+from ..models.model import MLP, HIST, GRU, LSTM, GAT, ALSTM, SFM, RSR, relation_GATs, relation_GATs_3heads, KEnhance
 from qlib.contrib.model.pytorch_transformer import Transformer
-from models.DLinear import DLinear_model
-from models.Autoformer import Model as autoformer
-from models.Crossformer import Model as crossformer
-from models.ETSformer import Model as ETSformer
-from models.FEDformer import Model as FEDformer
-from models.FiLM import Model as FiLM
-from models.Informer import Model as Informer
-from models.PatchTST import Model as PatchTST
-from utils.utils import metric_fn, mse, loss_ic, pair_wise_loss, NDCG_loss, ApproxNDCG_loss
-from utils.dataloader import create_loaders
+from ..models.DLinear import DLinear_model
+from ..models.Autoformer import Model as autoformer
+from ..models.Crossformer import Model as crossformer
+from ..models.ETSformer import Model as ETSformer
+from ..models.FEDformer import Model as FEDformer
+from ..models.FiLM import Model as FiLM
+from ..models.Informer import Model as Informer
+from ..models.PatchTST import Model as PatchTST
+from ..utils.utils import metric_fn, mse
+from ..utils.dataloader import create_loaders
 import warnings
+import logging
+
+
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
 
 EPS = 1e-12
@@ -42,7 +52,8 @@ time_series_library = [
 relation_model_dict = [
     'RSR',
     'relation_GATs',
-    'relation_GATs_3heads'
+    'relation_GATs_3heads',
+    'KEnhance'
 ]
 
 
@@ -106,6 +117,9 @@ def get_model(model_name):
 
     if model_name.upper() == 'PATCHTST':
         return PatchTST
+
+    if model_name.upper() == 'KENHANCE':
+        return KEnhance
 
     raise ValueError('unknown model name `%s`'%model_name)
 
@@ -185,20 +199,12 @@ def train_epoch(epoch, model, optimizer, train_loader, writer, args,
             pred = model(feature, stock2stock_matrix[stock_index][:, stock_index])
         elif args.model_name in time_series_library:
             # new added
-            pred = model(feature, mask, None, None)
+            pred = model(feature, mask)
         else:
             # other model only use feature as input
             pred = model(feature)
-        if args.loss_type == 'ic':
-            loss = loss_ic(pred, label)
-        elif args.loss_type == 'pair_wise':
-            loss = pair_wise_loss(pred, label)
-        elif args.loss_type == 'ndcg':
-            loss = NDCG_loss(pred, label)
-        elif args.loss_type == 'appndcg':
-            loss = ApproxNDCG_loss(pred, label)
-        else:
-            loss = loss_fn(pred, label)
+
+        loss = loss_fn(pred, label)
 
         optimizer.zero_grad()
         loss.backward()
@@ -230,20 +236,12 @@ def test_epoch(epoch, model, test_loader, writer, args, stock2concept_matrix=Non
                 pred = model(feature, stock2stock_matrix[stock_index][:, stock_index])
             elif args.model_name in time_series_library:
                 # new added
-                pred = model(feature, mask, None, None)
+                pred = model(feature, mask)
             else:
                 pred = model(feature)
 
-            if args.loss_type == 'ic':
-                loss = loss_ic(pred, label)
-            elif args.loss_type == 'pair_wise':
-                loss = pair_wise_loss(pred, label)
-            elif args.loss_type == 'ndcg':
-                loss = NDCG_loss(pred, label)
-            elif args.loss_type == 'appndcg':
-                loss = ApproxNDCG_loss(pred, label)
-            else:
-                loss = loss_fn(pred, label)
+
+            loss = loss_fn(pred, label)
             preds.append(pd.DataFrame({'score': pred.cpu().numpy(), 'label': label.cpu().numpy(), }, index=index))
 
         losses.append(loss.item())
@@ -284,7 +282,7 @@ def inference(model, data_loader, stock2concept_matrix=None, stock2stock_matrix=
                 pred = model(feature, stock2stock_matrix[stock_index][:, stock_index])
             elif args.model_name in time_series_library:
                 # new added
-                pred = model(feature, mask, None, None)
+                pred = model(feature, mask)
             else:
                 pred = model(feature)
             preds.append(pd.DataFrame({'score': pred.cpu().numpy(), 'label': label.cpu().numpy(),}, index=index))
@@ -304,7 +302,7 @@ def main(args):
 
     output_path = args.outdir
     if not output_path:
-        output_path = './output/' + suffix
+        output_path = '../ouput/' + suffix
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
@@ -344,7 +342,7 @@ def main(args):
             model = get_model(args.model_name)(args.d_feat, args.hidden_size, args.num_layers, dropout=0.5)
         elif args.model_name == 'HIST':
             model = get_model(args.model_name)(d_feat=args.d_feat, num_layers=args.num_layers, K=args.K)
-        elif args.model_name == 'RSR':
+        elif args.model_name in relation_model_dict:
             model = get_model(args.model_name)(num_relation=num_relation, d_feat=args.d_feat, num_layers=args.num_layers)
         elif args.model_name in time_series_library:
             model = get_model(args.model_name)(args)
@@ -362,7 +360,6 @@ def main(args):
         params_list = collections.deque(maxlen=args.smooth_steps)
         for epoch in range(args.n_epochs):
             pprint('Running', times, 'Epoch:', epoch)
-
             pprint('training...')
             train_epoch(epoch, model, optimizer, train_loader, writer, args, stock2concept_matrix, stock2stock_matrix)
             # save model  after every epoch
@@ -493,7 +490,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # model
-    parser.add_argument('--model_name', default='PatchTST')
+    parser.add_argument('--model_name', default='RSR')
     parser.add_argument('--d_feat', type=int, default=6)
     parser.add_argument('--hidden_size', type=int, default=128)
     parser.add_argument('--num_layers', type=int, default=2)
@@ -515,10 +512,10 @@ def parse_args():
     parser.add_argument('--n_heads', type=int, default=1, help='num of heads')
     parser.add_argument('--d_ff', type=int, default=64, help='dimension of fcn')
     parser.add_argument('--activation', type=str, default='gelu', help='activation')
-    parser.add_argument('--e_layers', type=int, default=1, help='num of encoder layers')
+    parser.add_argument('--e_layers', type=int, default=8, help='num of encoder layers')
     parser.add_argument('--top_k', type=int, default=5, help='for TimesBlock')
-    parser.add_argument('--d_bp', type=int, default=128, help='for stock prediction stock, we need more dimension to'
-                                                               ' preserve more information before full connect layer')
+    parser.add_argument('--pred_len', type=int, default=-1, help='the length of pred squence, in regression set to -1')
+    parser.add_argument('--de_norm', default=True, help='de normalize or not')
 
     # training
     parser.add_argument('--n_epochs', type=int, default=100)
@@ -526,8 +523,8 @@ def parse_args():
     parser.add_argument('--early_stop', type=int, default=30)
     parser.add_argument('--smooth_steps', type=int, default=5)
     parser.add_argument('--metric', default='IC')
-    # parser.add_argument('--loss', default='mse')
-    parser.add_argument('--repeat', type=int, default=10)
+    parser.add_argument('--loss', default='mse')
+    parser.add_argument('--repeat', type=int, default=5)
 
     # data
     parser.add_argument('--data_set', type=str, default='csi300')
@@ -539,24 +536,24 @@ def parse_args():
     parser.add_argument('--train_start_date', default='2007-01-01')
     parser.add_argument('--train_end_date', default='2014-12-31')
     parser.add_argument('--valid_start_date', default='2015-01-01')
-    parser.add_argument('--valid_end_date', default='2016-12-31')
-    parser.add_argument('--test_start_date', default='2017-01-01')
-    parser.add_argument('--test_end_date', default='2020-12-31')
+    parser.add_argument('--valid_end_date', default='2018-12-31')
+    parser.add_argument('--test_start_date', default='2019-01-01')
+    parser.add_argument('--test_end_date', default='2022-12-31')
 
     # other
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--annot', default='')
     parser.add_argument('--config', action=ParseConfigFile, default='')
-    parser.add_argument('--name', type=str, default='PatchTST')
+    parser.add_argument('--name', type=str, default='RSR')
 
     # input for csi 300
     parser.add_argument('--market_value_path', default='./data/csi300_market_value_07to22.pkl')
     parser.add_argument('--stock2concept_matrix', default='./data/csi300_stock2concept.npy')
-    parser.add_argument('--stock2stock_matrix', default='./data/csi300_multi_stock2stock_all.npy')
+    parser.add_argument('--stock2stock_matrix', default='./data/ablation/csi300_multi_stock2stock_all.npy')
     parser.add_argument('--stock_index', default='./data/csi300_stock_index.npy')
-    parser.add_argument('--outdir', default='./output/csi300_ts_PatchTST_1_layer')
+    parser.add_argument('--outdir', default='./output/for_nips_re/RSR_all')
     parser.add_argument('--overwrite', action='store_true', default=False)
-
+    parser.add_argument('--device', default='cuda:1')
     args = parser.parse_args()
 
     return args
@@ -567,7 +564,5 @@ if __name__ == '__main__':
     for prediction, maybe repeat 5, early_stop 10 is enough
     """
     args = parse_args()
-    "auto generate output dir"
-    if args.target == 't+1':
-        args.outdir = './output/csi300_t+1/csi300_' + args.model_name
+    device = args.device if torch.cuda.is_available() else 'cpu'
     main(args)

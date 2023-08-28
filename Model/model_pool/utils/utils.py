@@ -1,7 +1,7 @@
 import torch
 import pandas as pd
 import numpy as np
-from sklearn.metrics import ndcg_score
+from sklearn.metrics import ndcg_score, accuracy_score, precision_score, f1_score, recall_score, roc_auc_score
 from torchmetrics import RetrievalNormalizedDCG
 
 
@@ -94,7 +94,7 @@ def pair_wise_loss(pred, label, alpha=0.05):
 
 def NDCG_loss(pred, label, alpha=0.05, k=100):
     """
-    original loss function in RSR
+    NDCG loss function
     """
     mask = ~torch.isnan(label)
     pred = pred[mask]
@@ -106,6 +106,10 @@ def NDCG_loss(pred, label, alpha=0.05, k=100):
     # point-wise decrease, model better
     # ndcg increase, model better
     return point_wise - ndcg_loss
+
+
+def NDCG_evaluation(preds):
+    return preds.groupby(level='datetime').apply(lambda x: ndcg_score([x.ground_truth], [x.pred])).mean()
 
 
 def approxNDCGLoss_cutk(y_pred, y_true, eps=1, alpha=1., k=20):
@@ -128,20 +132,27 @@ def approxNDCGLoss_cutk(y_pred, y_true, eps=1, alpha=1., k=20):
 
     # Here we sort the true and predicted relevancy scores.
     y_pred_sorted, indices_pred = y_pred.sort(descending=True, dim=-1)
+    # print(y_pred_sorted.grad_fn)
     y_true_sorted, _ = y_true.sort(descending=True, dim=-1)
 
     # After sorting, we can mask out the pairs of indices (i, j) containing index of a padded element.
+    # 按照pred的顺序来排列
     true_sorted_by_preds = torch.gather(y_true, dim=0, index=indices_pred)
     # true_diffs = true_sorted_by_preds[:, :, None] - true_sorted_by_preds[:, None, :]
 
     # Here we clamp the -infs to get correct gains and ideal DCGs (maxDCGs)
     # just like relu, let all values that below 0 equal to 0
-    true_sorted_by_preds.clamp_(min=0.)
+    true_sorted_by_preds.clamp_(min=0.0000)
     y_true_sorted.clamp_(min=0.)
-
-    true_sort_by_preds_k = true_sorted_by_preds[:k]
-    y_pred_sorted_k = y_pred_sorted[:k]
-    y_true_sorted_k = y_true_sorted[:k]
+    if k == -1:
+        # not perform cut
+        true_sort_by_preds_k = true_sorted_by_preds
+        y_pred_sorted_k = y_pred_sorted
+        y_true_sorted_k = y_true_sorted
+    else:
+        true_sort_by_preds_k = true_sorted_by_preds[:k]
+        y_pred_sorted_k = y_pred_sorted[:k]
+        y_true_sorted_k = y_true_sorted[:k]
 
     # Here we find the gains, discounts and ideal DCGs per slate.
     pos_idxs = torch.arange(1, y_true_sorted_k.shape[0] + 1).to(device)
@@ -168,3 +179,95 @@ def ApproxNDCG_loss(pred, label, alpha=0.05, k=100):
     ndcg_part = approxNDCGLoss_cutk(pred, label, k=k) * alpha
     point_wise = mse(pred, label)
     return point_wise + ndcg_part
+
+
+def softclass_NDCG(pred, label):
+    """
+    issues: if we use NDCG, get weight*prob, then most will drop into middle part, this is not helpful
+            for example, with [3,2,1,0] related weights, we have two prob [0,0.5,0.5,0] and [0.5,0,0,0.5]
+            those two have THE SAME weights, this is not RIGHT!
+    :param pred: the output of model [B,N]
+    :param label: the ground truth [B]
+    :return:
+    """
+    m = torch.nn.Softmax(dim=1)
+    pred_n = m(pred)  # [B,N]
+    weights = [w*w for w in range(pred_n.shape[1])]
+    default_weight = torch.Tensor(weights, device=pred_n.device)
+    x = pred_n@default_weight
+    group = pred.shape[1]
+    mc_label = torch.zeros(label.shape[0], device=pred.device, dtype=torch.long)  # shape [B]
+    for i in range(1, group):
+        indices = torch.topk(label, int(label.shape[0]*i/group)).indices.to(device=pred.device)
+        mc_label[indices] += 1
+    mc_label = torch.square(mc_label)
+    return x, mc_label
+
+
+def cross_entropy(pred, label):
+    """
+    :param pred: the prediction result from model shape [B,N]
+    :param label: the label from dataset is the score, we will divide those score into 4 groups as their label
+    :return:
+    """
+    ce_loss = torch.nn.CrossEntropyLoss()
+    group = pred.shape[1]
+    mc_label = torch.zeros(label.shape[0], device=pred.device, dtype=torch.long)  # shape [B]
+    for i in range(1, group):
+        indices = torch.topk(label, int(label.shape[0]*i/group)).indices.to(device=pred.device)
+        mc_label[indices] += 1
+    return ce_loss(pred, mc_label)
+
+
+def class_approxNDCG(pred, label):
+    """
+    :param pred: the prediction result from model shape [B,N]
+    :param label: the label from dataset is the score, we will divide those score into 4 groups as their label
+    we do softmax on pred, then times the [3,2,1,0] matrix to get the final weights, the label weights are from
+    0 to 3, and compute the approxNDCG
+    """
+    soft_x, mc_label = softclass_NDCG(pred, label)  # shape [B]
+    return approxNDCGLoss_cutk(soft_x, mc_label.float(), k=-1)
+
+
+def generate_label(pred, label):
+    group = pred.shape[1]
+    mc_label = torch.zeros(label.shape[0], device=pred.device, dtype=torch.long)  # shape [B]
+    for i in range(1, group):
+        indices = torch.topk(label, int(label.shape[0]*i/group)).indices
+        mc_label[indices] += 1  # shape B
+    pred_label = torch.topk(pred, 1).indices.squeeze()  # shape B
+    return pred_label, mc_label
+
+
+def evaluate_mc(preds):
+    # default precision setting is micro
+    acc = preds.groupby(level='datetime').apply(lambda x: accuracy_score(x['ground_truth'],x['pred'])).mean()
+    average_precision = preds.groupby(level='datetime')\
+        .apply(lambda x: precision_score(x['ground_truth'], x['pred'], average='micro')).mean()
+    f1_micro = preds.groupby(level='datetime').\
+        apply(lambda x: f1_score(x['ground_truth'], x['pred'], average='micro')).mean()
+    f1_macro = preds.groupby(level='datetime').\
+        apply(lambda x: f1_score(x['ground_truth'], x['pred'], average='macro')).mean()
+    # roc_auc = preds.groupby(level='datetime').\
+    #     apply(lambda x: roc_auc_score(x['ground_truth'], x['pred_array'], average='macro')).mean()
+
+    return acc, average_precision, f1_micro, f1_macro
+
+
+class DotDict(dict):
+    def __init__(self, *args, **kwargs):
+        super(DotDict, self).__init__(*args, **kwargs)
+
+    def __getattr__(self, key):
+        value = self[key]
+        if isinstance(value, dict):
+            value = DotDict(value)
+        return value
+
+
+
+
+
+
+
