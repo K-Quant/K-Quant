@@ -73,6 +73,7 @@ shanghai tech
 Fr2kg
 Doc2edga
 ```
+Please download those relation matrix file through [this link](https://drive.google.com/file/d/15mGSgamVfnHw0MtM0QeAC-4u3XtaoPyl/view?usp=share_link)
 
 
 ### To save the prediction result:
