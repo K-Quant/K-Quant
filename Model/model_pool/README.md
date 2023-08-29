@@ -47,6 +47,7 @@ RSR
 relation_GATs
 KEnhance
 ------models that SOTA on other time series library-----
+------this part is under finetune-----------------------
 DLinear [AAAI 2023]
 Autoformer [NeurIPS 2023]
 Crossformer [ICLR 2023]
