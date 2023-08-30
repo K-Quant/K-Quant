@@ -10,7 +10,7 @@ In recent years, domain-specific knowledge bases (KBs) have attracted more atten
 
 If you find this system helpful in your research, please consider citing our papers that are listed below:
 [1] **T-FinKB: A Platform of Temporal Financial Knowledge Base Construction.**
-*Xinyi Zhu, Liping Wang, Hao Xin, Xiaohan Wang, Zhifeng Jia, Jiyao Wang, Chunming Ma, Yuxiang Zeng.* ICDE 2023. \[[paper](https://github.com/K-Quant/K-Quant/)\]
+*Xinyi Zhu, Liping Wang, Hao Xin, Xiaohan Wang, Zhifeng Jia, Jiyao Wang, Chunming Ma, Yuxiang Zeng.* ICDE 2023. \[[paper](https://ieeexplore.ieee.org/document/10184672)\]
 
 
 ## Main Features
@@ -57,6 +57,8 @@ The main features of K-Quant:
 ## Published Papers
 
 > Liping Wang, Yanyan Shen, and Lei Chen. 2023. TE-DyGE: Temporal Evolution-Enhanced Dynamic Graph Embedding Network. In Database Systems for Advanced Applications: 28th International Conference, DASFAA 2023, Tianjin, China, April 17–20, 2023, Proceedings, Part III. Springer-Verlag, Berlin, Heidelberg, 183–198. https://doi.org/10.1007/978-3-031-30675-4_13
+> X. Zhu, H. Xin, Y. Shen, and L. Chen. Hit-an effective approach to build a dynamic financial knowledge base. In Database Systems for Advanced Applications: 28th International Confer- ence, DASFAA 2023, Tianjin, China, April 17–20, 2023, Proceedings, Part II, pages 716–731. Springer, 2023. https://link.springer.com/chapter/10.1007/978-3-031-30672-3_48
+
 ## Related Works
 
 ## Acknowledgement
