@@ -57,7 +57,9 @@ The main features of K-Quant:
 ## Published Papers
 
 > Liping Wang, Yanyan Shen, and Lei Chen. 2023. TE-DyGE: Temporal Evolution-Enhanced Dynamic Graph Embedding Network. In Database Systems for Advanced Applications: 28th International Conference, DASFAA 2023, Tianjin, China, April 17–20, 2023, Proceedings, Part III. Springer-Verlag, Berlin, Heidelberg, 183–198. https://doi.org/10.1007/978-3-031-30675-4_13
-> X. Zhu, H. Xin, Y. Shen, and L. Chen. Hit-an effective approach to build a dynamic financial knowledge base. In Database Systems for Advanced Applications: 28th International Confer- ence, DASFAA 2023, Tianjin, China, April 17–20, 2023, Proceedings, Part II, pages 716–731. Springer, 2023. https://link.springer.com/chapter/10.1007/978-3-031-30672-3_48
+
+> Xinyi Zhu, Hao Xin, Yanyan Shen, and Lei Chen. 
+HIT - An Effective Approach to Build a Dynamic Financial Knowledge Base. In Database Systems for Advanced Applications: 28th International Confer- ence, DASFAA 2023, Tianjin, China, April 17–20, 2023, Proceedings, Part II, pages 716–731. Springer, 2023. https://link.springer.com/chapter/10.1007/978-3-031-30672-3_48
 
 ## Related Works
 
