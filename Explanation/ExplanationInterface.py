@@ -1,4 +1,6 @@
-from until import *
+import json
+
+from utils import *
 from SJsrc import *
 from HKUSTsrc import *
 
@@ -7,16 +9,16 @@ def parse_args():
     parser.add_argument('--device', default='cpu')
 
     #地址
-    parser.add_argument("--data_root", type=str, default="D:\ProjectCodes\FintechExplanation",
+    parser.add_argument("--data_root", type=str, default="D:\ProjectCodes\K-Quant\Data",
                         help="graph_data root path")
-    parser.add_argument("--ckpt_root", type=str, default=r"D:\ProjectCodes\FintechExplanation\tmp_ckpt",
+    parser.add_argument("--ckpt_root", type=str, default=r".\pretrianedModel\tmp_ckpt",
                         help="ckpt root path")
-    parser.add_argument("--result_root", type=str, default=r"D:\ProjectCodes\FintechExplanation\results",
+    parser.add_argument("--result_root", type=str, default=r".\results",
                         help="explanation resluts root path")
-    parser.add_argument('--market_value_path', type=str, default=r'./data/csi300_market_value_07to20.pkl')
-    parser.add_argument('--stock_index', type=str, default=r'./data/csi300_stock_index.npy')
-    parser.add_argument('--graph_data_path', default='./data/csi300_multi_stock2stock_all.npy')
-    parser.add_argument('--model_dir', type=str, default='./output/csi300_NRSR_3')
+    parser.add_argument('--market_value_path', type=str, default=r'../Data/csi300_market_value_07to20.pkl')
+    parser.add_argument('--stock_index', type=str, default=r'../Data/csi300_stock_index.npy')
+    parser.add_argument('--graph_data_path', default='../Data/csi300_multi_stock2stock_all.npy')
+    parser.add_argument('--model_dir', type=str, default=r'.\pretrianedModel\csi300_NRSR_3')
 
     parser.add_argument('--d_feat', type=int, default=6)
     parser.add_argument('--num_layers', type=int, default=2)
@@ -103,3 +105,19 @@ def select_top_k_related_stock(relative_stocks_dict, k=3):
                 stock_dict[os] = sorted_rs
         new_relative_stocks_dict[d] = stock_dict
     return new_relative_stocks_dict
+
+
+if __name__ == '__main__':
+    args = parse_args()
+    args.start_date = '2022-06-01'
+    args.end_date = '2022-06-02'
+    args.explainer = 'inputGradientExplainer'
+    args.stock_list = ['SH600018']
+    args.date_list = ['2022-06-02']
+    s_t = time.time()
+    relative_stocks_dict, score_dict = run_explanation(args)
+    exp_dict = {'relative_stocks_dict': relative_stocks_dict, 'score_dict': score_dict}
+    save_path = r'.\results'
+    with open(r'{}/{}.json'.format(save_path, args.explainer), 'w') as f:
+        json.dump(exp_dict, f)
+

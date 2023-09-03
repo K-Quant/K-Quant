@@ -35,7 +35,7 @@ class TemporalRandomWalk():
         t = start_edges[-1].values()[0]
         j = start_edges[0]
         walk = [j]
-        # Iterates until length of walk is reached 
+        # Iterates utils length of walk is reached
         for _ in range(walk_length - 2):
             # Compute in-between periods of time between source node and temporal neighbors
             cur_nbrs = list(self.G.edges(j,data=True))
