@@ -111,7 +111,7 @@ if __name__ == '__main__':
     args = parse_args()
     args.start_date = '2022-06-01'
     args.end_date = '2022-06-02'
-    args.explainer = 'inputGradientExplainer'
+    args.explainer = 'xpathExplainer'
     args.stock_list = ['SH600018']
     args.date_list = ['2022-06-02']
     s_t = time.time()

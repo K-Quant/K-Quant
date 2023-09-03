@@ -4,7 +4,7 @@ import os
 
 
 def read_one_matrix(market, stocks_index_dict, relation_name, data_path):
-    path = os.path.join(data_path, f"data/{market}/stock_stock_graphs/{relation_name}")
+    path = os.path.join(data_path, f"{market}/stock_stock_graphs/{relation_name}")
     stocks_num = len(stocks_index_dict)
     relation_A = np.zeros((stocks_num, stocks_num))
     if market == "A_share":
@@ -28,7 +28,7 @@ def get_all_matrix(market, stocks_index_dict, data_path):
     stocks_index_dict: represents the intended stock index   e.g. {"SH60000":0,"SH60001":1,...,}
     return: relation_encoding: a N*N*K adjacent matrix
     """
-    path = os.path.join(data_path, f"data/{market}/stock_stock_graphs/")
+    path = os.path.join(data_path, f"{market}/stock_stock_graphs/")
     stocks_num = len(stocks_index_dict)
     relation_As = []
     relation_types = os.listdir(path)
