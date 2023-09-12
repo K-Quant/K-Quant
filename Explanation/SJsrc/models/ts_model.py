@@ -393,6 +393,7 @@ class Graphs(nn.Module):
             batch_explanations = {} if cached_explanations is None else cached_explanations[i]
             batch_fidelity_mask = 0
             index_to_explain = []
+            scores_dict = {}
             batch_graph_size = 0
             with torch.no_grad():
                 if stocks:
@@ -464,39 +465,38 @@ class Graphs(nn.Module):
                     # batch_fidelity_mask += fidelity_mask
                     batch_graph_size += explanation_graph_mask.num_nodes()
 
-                s_score = exp_edges/original_edges
-                scores_dict = {}
+                s_score = round(exp_edges / original_edges, 2)
+
                 idx = 0
+                scores_dict[date] = {}
                 for stock, exps in batch_explanations.items():
-                    scores_dict[stock] = {}
-                    scores_dict[stock]['f_score'] = f_score_list[idx] * 5
-                    scores_dict[stock]['a_score'] = a_score_list[idx] * 5
-                    scores_dict[stock]['s_score'] = s_score * 5
-                    scores_dict[stock]['score'] = scores_dict[stock]['f_score'] + scores_dict[stock]['a_score'] + scores_dict[stock]['s_score']
+                    scores_dict[date][stock] = {}
+                    scores_dict[date][stock]['f_score'] = f_score_list[idx] * 5
+                    scores_dict[date][stock]['a_score'] = a_score_list[idx] * 5
+                    scores_dict[date][stock]['s_score'] = s_score * 5
+                    scores_dict[date][stock]['score'] = f_score_list[idx] * 5 + a_score_list[idx] * 5 + s_score * 5
                     idx += 1
 
                     ne_re = {}
-                    for k , v in exps.items():
+                    for k, v in exps.items():
                         ne_re[stks[k[1]]] = v
                     batch_explanations[stock] = ne_re
 
                 explanations[date] = batch_explanations
                 num_stock = len(batch_explanations.keys())
-                if num_stock>0:
-                    fidelity_mask_score = batch_fidelity_mask/num_stock
-                    graph_size = batch_graph_size/num_stock
+                if num_stock > 0:
+                    fidelity_mask_score = batch_fidelity_mask / num_stock
+                    graph_size = batch_graph_size / num_stock
                     scores_mask.append(fidelity_mask_score)
                     xsize.append(graph_size)
                 if debug:
                     self.logger.info(f" Explain for {num_stock} stocks in batch, "
                                      f"fidelity mask score {fidelity_mask_score}, xgraph size {graph_size}..")
-        if debug:
-            self.logger.info(f" Overall fidelity mask score {sum(scores_mask)/len(scores_mask)}.")
-            self.logger.info(f" Overall xgraph size {sum(xsize)/len(xsize)}.")
+            if debug:
+                self.logger.info(f" Overall fidelity mask score {sum(scores_mask) / len(scores_mask)}.")
+                self.logger.info(f" Overall xgraph size {sum(xsize) / len(xsize)}.")
 
-
-
-        return explanations, scores_mask, scores_dict
+            return explanations, scores_mask, scores_dict
 
     def get_one_explanation(self, data_df, stocks,  explainer, top_k):
         '''
