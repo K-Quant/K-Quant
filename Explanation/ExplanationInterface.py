@@ -107,6 +107,35 @@ def select_top_k_related_stock(relative_stocks_dict, k=3):
     return new_relative_stocks_dict
 
 
+def get_results(start_date, end_date, explainer, check_stock_list, check_date_list):
+    args = parse_args()
+    args.start_date = start_date
+    args.end_date = end_date
+    args.explainer = explainer
+    args.stock_list = check_stock_list
+    args.date_list = check_date_list
+    relative_stocks_dict, score_dict = run_explanation(args)
+
+    for data, stocks_score in score_dict.items():
+        if data not in check_date_list:
+            continue
+        for stock, score in stocks_score.items():
+            if stock not in check_stock_list:
+                continue
+            print(r'--------------------------------------------------------------------')
+            print(r'股票 {} 解释结果如下：'.format(stock))
+            print(r'最相关的股票:{}, 股票得分为：{}'.format(relative_stocks_dict[data][stock].key(),
+                                                           relative_stocks_dict[data][stock]))
+            print(r'对该解释结果的评价如下：')
+            print(r'总得分：{}，保真度得分：{}，准确性得分：{}， 稀疏性得分：{}'.format(
+                score['score'],
+                score['f_score'],
+                score['a_score'],
+                score['s_score']
+
+            ))
+
+
 if __name__ == '__main__':
     args = parse_args()
     args.start_date = '2022-06-01'

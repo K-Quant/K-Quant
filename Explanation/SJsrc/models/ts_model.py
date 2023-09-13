@@ -473,8 +473,9 @@ class Graphs(nn.Module):
                     scores_dict[date][stock] = {}
                     scores_dict[date][stock]['f_score'] = f_score_list[idx] * 5
                     scores_dict[date][stock]['a_score'] = a_score_list[idx] * 5
-                    scores_dict[date][stock]['s_score'] = s_score * 5
-                    scores_dict[date][stock]['score'] = f_score_list[idx] * 5 + a_score_list[idx] * 5 + s_score * 5
+                    scores_dict[date][stock]['s_score'] = (1 - s_score) * 5
+                    scores_dict[date][stock]['score'] = f_score_list[idx] * 5 + a_score_list[idx] * 5 + (
+                                1 - s_score) * 5
                     idx += 1
 
                     ne_re = {}
