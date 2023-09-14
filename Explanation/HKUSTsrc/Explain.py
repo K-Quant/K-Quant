@@ -9,8 +9,8 @@ import random
 from tqdm import tqdm
 
 # from Config import config
-from HKUSTsrc.Explainer import *
-from HKUSTsrc.model import *
+from Explanation.HKUSTsrc.Explainer import *
+from Explanation.HKUSTsrc.model import *
 
 
 # from dataloader import DataLoader, create_loaders
