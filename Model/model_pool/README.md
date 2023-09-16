@@ -12,8 +12,8 @@ This module have 3 basic functions:
 
 ## Environment
 1. Install python3.8(recommend) 
-2. Install the requirements in ```requirements.txt```.
-3. Install the quantitative investment module [Qlib](https://github.com/microsoft/qlib) and download the data from Qlib, or you can choose to download those data in step 5
+2. Install the requirements in [requirements.txt].
+3. Install the quantitative investment platform [Qlib](https://github.com/microsoft/qlib) and download the data from Qlib:
     ```
     # install Qlib from source
     pip install --upgrade  cython
@@ -25,12 +25,11 @@ This module have 3 basic functions:
     python scripts/get_data.py qlib_data --target_dir ~/.qlib/qlib_data/cn_data --region cn --version v2
     ```
 4. Download market_value, index file for knowledge empowered models from [this link](https://drive.google.com/file/d/1KBwZ_lX___bYBIHx9VWRzRgLFb8N3-NK/view?usp=sharing)
-5. To get the up-to-date time series data, we recommend using the following Alpha 360 data source:
+5. To get the up-to-date time series data, we recommend using the following Qlib Alpha 360 data source:
 ```commandline
 wget https://github.com/chenditc/investment_data/releases/download/2023-07-01/qlib_bin.tar.gz
 tar -zxvf qlib_bin.tar.gz -C cn_data --strip-components=2
 ```
-And you need to modify the ```provider_url``` in ```utils/dataloader.py```, to link the data you just downloaded.
 
 ## Module 2.1 stock recommendation models
 Now we provide the following models that could be used in stock regression/forecasting/recommendation:
@@ -48,7 +47,6 @@ RSR
 relation_GATs
 KEnhance
 ------models that SOTA on other time series library-----
-------this part is under finetune-----------------------
 DLinear [AAAI 2023]
 Autoformer [NeurIPS 2023]
 Crossformer [ICLR 2023]
@@ -73,7 +71,6 @@ shanghai tech
 Fr2kg
 Doc2edga
 ```
-Please download those relation matrix file through [this link](https://drive.google.com/file/d/15mGSgamVfnHw0MtM0QeAC-4u3XtaoPyl/view?usp=share_link)
 
 
 ### To save the prediction result:

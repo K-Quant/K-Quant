@@ -16,18 +16,18 @@ import pandas as pd
 from torch.utils.tensorboard import SummaryWriter
 import sys
 sys.path.insert(0, sys.path[0]+"/../")
-from ..models.model import MLP, HIST, GRU, LSTM, GAT, ALSTM, SFM, RSR, relation_GATs, relation_GATs_3heads, KEnhance
+from models.model import MLP, HIST, GRU, LSTM, GAT, ALSTM, SFM, RSR, relation_GATs, relation_GATs_3heads, KEnhance
 from qlib.contrib.model.pytorch_transformer import Transformer
-from ..models.DLinear import DLinear_model
-from ..models.Autoformer import Model as autoformer
-from ..models.Crossformer import Model as crossformer
-from ..models.ETSformer import Model as ETSformer
-from ..models.FEDformer import Model as FEDformer
-from ..models.FiLM import Model as FiLM
-from ..models.Informer import Model as Informer
-from ..models.PatchTST import Model as PatchTST
-from ..utils.utils import metric_fn, mse
-from ..utils.dataloader import create_loaders
+from models.DLinear import DLinear_model
+from models.Autoformer import Model as autoformer
+from models.Crossformer import Model as crossformer
+from models.ETSformer import Model as ETSformer
+from models.FEDformer import Model as FEDformer
+from models.FiLM import Model as FiLM
+from models.Informer import Model as Informer
+from models.PatchTST import Model as PatchTST
+from utils.utils import metric_fn, mse
+from utils.dataloader import create_loaders
 import warnings
 import logging
 
@@ -533,12 +533,12 @@ def parse_args():
     parser.add_argument('--batch_size', type=int, default=-1)  # -1 indicate daily batch
     parser.add_argument('--least_samples_num', type=float, default=1137.0) 
     parser.add_argument('--label', default='')  # specify other labels
-    parser.add_argument('--train_start_date', default='2007-01-01')
-    parser.add_argument('--train_end_date', default='2014-12-31')
-    parser.add_argument('--valid_start_date', default='2015-01-01')
-    parser.add_argument('--valid_end_date', default='2018-12-31')
+    parser.add_argument('--train_start_date', default='2019-01-01')
+    parser.add_argument('--train_end_date', default='2020-12-31')
+    parser.add_argument('--valid_start_date', default='2019-01-01')
+    parser.add_argument('--valid_end_date', default='2020-12-31')
     parser.add_argument('--test_start_date', default='2019-01-01')
-    parser.add_argument('--test_end_date', default='2022-12-31')
+    parser.add_argument('--test_end_date', default='2020-12-31')
 
     # other
     parser.add_argument('--seed', type=int, default=0)
@@ -549,9 +549,9 @@ def parse_args():
     # input for csi 300
     parser.add_argument('--market_value_path', default='./data/csi300_market_value_07to22.pkl')
     parser.add_argument('--stock2concept_matrix', default='./data/csi300_stock2concept.npy')
-    parser.add_argument('--stock2stock_matrix', default='./data/ablation/csi300_multi_stock2stock_all.npy')
+    parser.add_argument('--stock2stock_matrix', default='./data/csi300_multi_stock2stock_all.npy')
     parser.add_argument('--stock_index', default='./data/csi300_stock_index.npy')
-    parser.add_argument('--outdir', default='./output/for_nips_re/RSR_all')
+    parser.add_argument('--outdir', default='./output/RSR_all')
     parser.add_argument('--overwrite', action='store_true', default=False)
     parser.add_argument('--device', default='cuda:1')
     args = parser.parse_args()

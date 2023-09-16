@@ -4,7 +4,7 @@ import torch.nn.init as init
 import numpy as np
 import sys
 sys.path.append("..")
-from ..utils.utils import cal_cos_similarity
+from utils.utils import cal_cos_similarity
 
 
 class MLP(nn.Module):

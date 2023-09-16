@@ -5,8 +5,8 @@ support: LSTM, ALSTM, GRU, GATS, HIST, SFM, RSR
 import datetime
 import sys
 sys.path.insert(0, sys.path[0]+"/../")
-from ..utils.dataloader import create_incre_loaders
-from ..utils.dataloader import create_incre_pre_loaders
+from utils.dataloader import create_incre_loaders
+from utils.dataloader import create_incre_pre_loaders
 import numpy as np
 import pandas as pd
 import torch
@@ -17,18 +17,18 @@ import os
 import torch.optim as optim
 import collections
 from tqdm import tqdm
-from ..models.model import MLP, HIST, GRU, LSTM, GAT, ALSTM, SFM, RSR, relation_GATs, relation_GATs_3heads
-from ..utils.utils import metric_fn, mse, loss_ic, pair_wise_loss, NDCG_loss, ApproxNDCG_loss
+from models.model import MLP, HIST, GRU, LSTM, GAT, ALSTM, SFM, RSR, relation_GATs, relation_GATs_3heads
+from utils.utils import metric_fn, mse, loss_ic, pair_wise_loss, NDCG_loss, ApproxNDCG_loss
 from qlib.contrib.model.pytorch_transformer import Transformer
-from ..utils.dataloader import create_loaders
-from ..models.DLinear import DLinear_model
-from ..models.Autoformer import Model as autoformer
-from ..models.Crossformer import Model as crossformer
-from ..models.ETSformer import Model as ETSformer
-from ..models.FEDformer import Model as FEDformer
-from ..models.FiLM import Model as FiLM
-from ..models.Informer import Model as Informer
-from ..models.PatchTST import Model as PatchTST
+from utils.dataloader import create_loaders
+from models.DLinear import DLinear_model
+from models.Autoformer import Model as autoformer
+from models.Crossformer import Model as crossformer
+from models.ETSformer import Model as ETSformer
+from models.FEDformer import Model as FEDformer
+from models.FiLM import Model as FiLM
+from models.Informer import Model as Informer
+from models.PatchTST import Model as PatchTST
 import json
 
 time_series_library = [

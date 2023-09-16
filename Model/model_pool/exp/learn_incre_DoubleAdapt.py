@@ -8,8 +8,8 @@ from tqdm import tqdm
 import time
 import sys
 sys.path.insert(0, sys.path[0]+"/../")
-from ..models.model import MLP, GRU, LSTM, GAT, ALSTM, SFM
-from ..utils.dataloader import create_doubleadapt_loaders
+from models.model import MLP, GRU, LSTM, GAT, ALSTM, SFM
+from utils.dataloader import create_doubleadapt_loaders
 from pathlib import Path
 from pprint import pprint
 from typing import Optional, Dict, Union, List
@@ -23,8 +23,8 @@ import numpy as np
 DIRNAME = Path(__file__).absolute().resolve().parent
 sys.path.append(str(DIRNAME))
 sys.path.append(str(DIRNAME.parent.parent.parent))
-from ..models.DoubleAdapt_model.model import IncrementalManager, DoubleAdaptManager
-from ..models.DoubleAdapt_model import utils
+from models.DoubleAdapt_model.model import IncrementalManager, DoubleAdaptManager
+from models.DoubleAdapt_model import utils
 
 
 def get_model(model_name):
