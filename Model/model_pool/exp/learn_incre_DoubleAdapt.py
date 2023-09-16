@@ -146,7 +146,7 @@ class IncrementalExp:
     """
 
     def __init__(
-            self, args, data_dir="cn_data", root_path='../qlib_data', calendar_path=None, market="csi300",
+            self, args, data_dir="cn_data", calendar_path=None, market="csi300",
             horizon=1, alpha=360, x_dim=None, step=20, # model_name="MLP",
             lr=0.01, lr_model=0.001, reg=0.5, num_head=8, tau=10, naive=False, preprocess_tensor=True,
             use_extra=False, tag=None, rank_label=False, first_order=True, h_path=None, test_start=None, test_end=None,
@@ -199,10 +199,10 @@ class IncrementalExp:
             override the end date of test data
         """
         self.data_dir = data_dir
-        self.provider_uri = os.path.join(root_path, data_dir)
+        self.provider_uri = os.path.join(args.root_path, data_dir)
 
         if calendar_path is None:
-            calendar_path = os.path.join(root_path, data_dir, 'calendars/day.txt')
+            calendar_path = os.path.join(args.root_path, data_dir, 'calendars/day.txt')
         calendar = pd.read_csv(calendar_path, header=None)[0]  # the column name is 0 for .txt files
         self.ta = utils.TimeAdjuster(calendar)
 
@@ -530,11 +530,12 @@ def parse_args():
     parser.add_argument('--model_name', default='GATs')
     parser.add_argument('--n_epochs', type=int, default=1)
     parser.add_argument('--early_stop', type=int, default=200)
-    parser.add_argument('--reload_path', default="./output/for_platform/INCRE/DA_GATs/model.bin",
+    parser.add_argument('--reload_path', default="./output/INCRE/DA_GATs/model.bin",
                         help='None: without reloading; str: path for loading')
     parser.add_argument('--result_path', default="./pred_output/GATs_DA.pkl")
-    parser.add_argument('--model_path', default='./output/for_platform/GATs', help='learned model')
-    parser.add_argument('--model_save_path', default="./output/for_platform/INCRE/DA_GATs", help='updated model')
+    parser.add_argument('--model_path', default='./output/GATs', help='learned model')
+    parser.add_argument('--model_save_path', default="./output/INCRE/DA_GATs", help='updated model')
+    parser.add_argument('--root_path', default='/Users/haowang/Desktop/project/stock_model/qlib_data', help='')
     parser.add_argument('--incre_train_start', default='2008-01-01')  # work time 2012 0101
     parser.add_argument('--incre_train_end', default='2018-12-31')  # work time 2012 1231
     parser.add_argument('--incre_val_start', default='2019-01-01')  # work time 2013 0101

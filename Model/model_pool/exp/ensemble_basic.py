@@ -342,7 +342,7 @@ def main(args, device):
     output, report = average_and_blend(args, output, all_model_pool)
     output, report = sjtu_ensemble(args, output, all_model_pool)
     output, report = sim_linear(output, all_model_pool)
-    pd.to_pickle(output, 'pred_output/all_in_one_incre.pkl')
+    # pd.to_pickle(output, 'pred_output/all_in_one_incre.pkl')
     print(output.head())
     # print(report)
 
