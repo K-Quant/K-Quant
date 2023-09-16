@@ -1,11 +1,12 @@
 import json
 
-from utils import *
-from SJsrc import *
-from HKUSTsrc import *
+from Explanation.utils import *
+from Explanation.SJsrc import *
+from Explanation.HKUSTsrc import *
 
 def parse_args():
     parser = argparse.ArgumentParser()
+
     parser.add_argument('--device', default='cpu')
 
     #地址
@@ -46,8 +47,7 @@ def parse_args():
     parser.add_argument('--stock_list', type=list, default=[])
     parser.add_argument('--date_list', type=list, default=[])
     # parser.add_argument('--top_k', type=int, default=3)
-
-    args = parser.parse_args()
+    args = parser.parse_known_args()[0]
     return args
 
 def run_explanation(args):
@@ -105,6 +105,33 @@ def select_top_k_related_stock(relative_stocks_dict, k=3):
                 stock_dict[os] = sorted_rs
         new_relative_stocks_dict[d] = stock_dict
     return new_relative_stocks_dict
+
+
+def get_results(args, start_date, end_date, explainer, check_stock_list, check_date_list):
+    args.start_date = start_date
+    args.end_date = end_date
+    args.explainer = explainer
+    args.stock_list = check_stock_list
+    args.date_list = check_date_list
+    relative_stocks_dict, score_dict = run_explanation(args)
+
+    for date, stocks_score in score_dict.items():
+        if date not in check_date_list:
+            continue
+        for stock, score in stocks_score.items():
+            if stock not in check_stock_list:
+                continue
+            print(r'--------------------------------------------------------------------')
+            print(r'股票 {} 解释结果如下：'.format(stock))
+            print(r'最相关的股票与得分{}'.format(relative_stocks_dict[date][stock]))
+            print(r'对该解释结果的评价如下：')
+            print(r'总得分：{}，保真度得分：{}，准确性得分：{}， 稀疏性得分：{}'.format(
+                score['score'],
+                score['f_score'],
+                score['a_score'],
+                score['s_score']
+
+            ))
 
 
 if __name__ == '__main__':
