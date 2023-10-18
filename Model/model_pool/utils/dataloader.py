@@ -1,17 +1,19 @@
+import os.path
+
 import torch
 import numpy as np
 import pandas as pd
 import qlib
 import datetime
 from qlib.config import REG_US, REG_CN
+from pathlib import Path
+import sys
 
 # provider_uri = "~/.qlib/qlib_data/cn_data"  # target_dir
 # provider_uri = "../qlib_data/cn_data"  # target_dir
 provider_uri = "/Users/haowang/Desktop/project/stock_model/qlib_data/cn_data"
 qlib.init(provider_uri=provider_uri, region=REG_CN)
 from qlib.data.dataset import DatasetH
-from qlib.data.dataset.handler import DataHandlerLP
-
 
 class DataLoader:
 
@@ -618,7 +620,7 @@ def bin_helper(x):
     #     return 11
 
 
-def create_doubleadapt_loaders(args):
+def create_doubleadapt_loaders(args, rank_label=True, save=True, reload=True):
     """
     load qlib alpha360 data and split into train, validation and test loader
     :param args:
@@ -626,7 +628,7 @@ def create_doubleadapt_loaders(args):
     """
     start_time = datetime.datetime.strptime(args.incre_train_start, '%Y-%m-%d')
     end_time = datetime.datetime.strptime(args.test_end, '%Y-%m-%d')
-    train_end_time = datetime.datetime.strptime(args.test_end, '%Y-%m-%d')
+    train_end_time = datetime.datetime.strptime(args.incre_val_end, '%Y-%m-%d')
 
     handler = {'class': 'Alpha360', 'module_path': 'qlib.contrib.data.handler',
             'kwargs': {'start_time': start_time, 'end_time': end_time, 'fit_start_time': start_time,
@@ -634,13 +636,24 @@ def create_doubleadapt_loaders(args):
                     {'class': 'RobustZScoreNorm', 'kwargs': {'fields_group': 'feature', 'clip_outlier': True}},
                     {'class': 'Fillna', 'kwargs': {'fields_group': 'feature'}}],
                         'learn_processors': [{'class': 'DropnaLabel'},
-                                            {'class': 'CSRankNorm', 'kwargs': {'fields_group': 'label'}}],
+                                            {'class': "CSRankNorm" if rank_label else "CSZScoreNorm",
+                                             'kwargs': {'fields_group': 'label'}}],
                         'label': ['Ref($close, -2) / Ref($close, -1) - 1']}}
 
     segments = {
         'train': (args.incre_train_start, args.test_end)
     }
+    DIRNAME = Path(__file__).absolute().resolve().parent
+    h_path = DIRNAME.parent / f"csi300_rank{rank_label}_alpha360_handler_horizon1.pkl"
+
     # get dataset from qlib
+    if reload and os.path.exists(h_path):
+        handler = f"file://{h_path}"
     dataset = DatasetH(handler, segments)
-    data = dataset.prepare(["train"], col_set=["feature", "label"], data_key=DataHandlerLP.DK_L, )[0]
-    return data
+
+    if save and not isinstance(handler, str):
+        dataset.handler.to_pickle(h_path, dump_all=True)
+        print('Save handler file to', h_path)
+
+    return dataset
+

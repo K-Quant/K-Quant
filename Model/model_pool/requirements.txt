@@ -10,3 +10,5 @@ torchmetrics~=0.11.4
 matplotlib~=3.5.1
 einops~=0.6.1
 sympy~=1.12
+
+higher==0.2.1
