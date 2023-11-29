@@ -3,8 +3,10 @@ import torch.nn as nn
 import torch.nn.init as init
 import numpy as np
 import sys
-sys.path.append("..")
-from ..utils.utils import cal_cos_similarity
+from pathlib import Path
+DIRNAME = Path(__file__).absolute().resolve().parent
+sys.path.insert(0, str(DIRNAME.parent.parent))
+from model_pool.utils.utils import cal_cos_similarity
 
 
 class MLP(nn.Module):

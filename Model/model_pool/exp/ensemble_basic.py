@@ -1,25 +1,25 @@
 import datetime
 import sys
 sys.path.insert(0, sys.path[0]+"/../")
-from ..utils.dataloader import create_test_loaders
-from ..utils.utils import DotDict
+from utils.dataloader import create_test_loaders
+from utils.utils import DotDict
 import numpy as np
 import pandas as pd
 import torch
 import argparse
 import pickle
 from tqdm import tqdm
-from ..models.model import MLP, HIST, GRU, LSTM, GAT, ALSTM, SFM, RSR, relation_GATs, relation_GATs_3heads, KEnhance
-from ..models.ensemble_model import ReweightModel, PerfomanceBasedModel
+from models.model import MLP, HIST, GRU, LSTM, GAT, ALSTM, SFM, RSR, relation_GATs, relation_GATs_3heads, KEnhance
+from models.ensemble_model import ReweightModel, PerfomanceBasedModel
 from qlib.contrib.model.pytorch_transformer import Transformer
-from ..models.DLinear import DLinear_model
-from ..models.Autoformer import Model as autoformer
-from ..models.Crossformer import Model as crossformer
-from ..models.ETSformer import Model as ETSformer
-from ..models.FEDformer import Model as FEDformer
-from ..models.FiLM import Model as FiLM
-from ..models.Informer import Model as Informer
-from ..models.PatchTST import Model as PatchTST
+from models.DLinear import DLinear_model
+from models.Autoformer import Model as autoformer
+from models.Crossformer import Model as crossformer
+from models.ETSformer import Model as ETSformer
+from models.FEDformer import Model as FEDformer
+from models.FiLM import Model as FiLM
+from models.Informer import Model as Informer
+from models.PatchTST import Model as PatchTST
 import json
 from sklearn.linear_model import LinearRegression
 
@@ -342,7 +342,7 @@ def main(args, device):
     output, report = average_and_blend(args, output, all_model_pool)
     output, report = sjtu_ensemble(args, output, all_model_pool)
     output, report = sim_linear(output, all_model_pool)
-    pd.to_pickle(output, 'pred_output/all_in_one_incre.pkl')
+    # pd.to_pickle(output, 'pred_output/all_in_one_incre.pkl')
     print(output.head())
     # print(report)
 

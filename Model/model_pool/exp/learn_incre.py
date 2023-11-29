@@ -5,8 +5,8 @@ support: LSTM, ALSTM, GRU, GATS, HIST, SFM, RSR
 import datetime
 import sys
 sys.path.insert(0, sys.path[0]+"/../")
-from ..utils.dataloader import create_incre_loaders
-from ..utils.dataloader import create_incre_pre_loaders
+from utils.dataloader import create_incre_loaders
+from utils.dataloader import create_incre_pre_loaders
 import numpy as np
 import pandas as pd
 import torch
@@ -17,18 +17,18 @@ import os
 import torch.optim as optim
 import collections
 from tqdm import tqdm
-from ..models.model import MLP, HIST, GRU, LSTM, GAT, ALSTM, SFM, RSR, relation_GATs, relation_GATs_3heads
-from ..utils.utils import metric_fn, mse, loss_ic, pair_wise_loss, NDCG_loss, ApproxNDCG_loss
+from models.model import MLP, HIST, GRU, LSTM, GAT, ALSTM, SFM, RSR, relation_GATs, relation_GATs_3heads
+from utils.utils import metric_fn, mse, loss_ic, pair_wise_loss, NDCG_loss, ApproxNDCG_loss
 from qlib.contrib.model.pytorch_transformer import Transformer
-from ..utils.dataloader import create_loaders
-from ..models.DLinear import DLinear_model
-from ..models.Autoformer import Model as autoformer
-from ..models.Crossformer import Model as crossformer
-from ..models.ETSformer import Model as ETSformer
-from ..models.FEDformer import Model as FEDformer
-from ..models.FiLM import Model as FiLM
-from ..models.Informer import Model as Informer
-from ..models.PatchTST import Model as PatchTST
+from utils.dataloader import create_loaders
+from models.DLinear import DLinear_model
+from models.Autoformer import Model as autoformer
+from models.Crossformer import Model as crossformer
+from models.ETSformer import Model as ETSformer
+from models.FEDformer import Model as FEDformer
+from models.FiLM import Model as FiLM
+from models.Informer import Model as Informer
+from models.PatchTST import Model as PatchTST
 import json
 
 time_series_library = [
@@ -269,8 +269,8 @@ def parse_args():
     parser.add_argument('--incre_start_date', default='2020-01-01')
     parser.add_argument('--incre_end_date', default='2022-05-31')
     parser.add_argument('--device', default='cuda:0')
-    parser.add_argument('--model_path', default='./output/for_platform/LSTM', help='learned model')
-    parser.add_argument('--model_save_path', default='./output/for_platform/INCRE/LSTM_incre', help='updated model')
+    parser.add_argument('--model_path', default='./output/LSTM', help='learned model')
+    parser.add_argument('--model_save_path', default='./output/INCRE/LSTM_incre', help='updated model')
     parser.add_argument('--incre_p', default=1000000, help='weight of distillation losses')
     parser.add_argument('--incre_alpha', default=0.1, help='trigger hyperparameters for incremental updates')
     args = parser.parse_args()
@@ -281,6 +281,6 @@ if __name__ == '__main__':
     args = parse_args()
     device = args.device if torch.cuda.is_available() else 'cpu'
     for model_name in ['ALSTM', 'GATs', 'GRU', 'LSTM', 'MLP', 'SFM']:
-        args.model_path = './output/for_platform/' + model_name
-        args.model_save_path = './output/for_platform/INCRE/' + model_name + '_incre'
+        args.model_path = './output/' + model_name
+        args.model_save_path = './output/INCRE/' + model_name + '_incre'
         main(args, device)
