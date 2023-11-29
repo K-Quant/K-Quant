@@ -4,6 +4,7 @@ from Explanation.utils import *
 from Explanation.SJsrc import *
 from Explanation.HKUSTsrc import *
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
 
@@ -50,6 +51,7 @@ def parse_args():
     args = parser.parse_known_args()[0]
     return args
 
+
 def run_explanation(args):
     if args.explainer == 'xpathExplainer':
         def select_explanation(args, exp_dict):
@@ -88,6 +90,13 @@ def run_explanation(args):
         return relative_stocks_dict, score_dict
 
 
+def get_assessment(args):
+    data_loader = create_data_loaders(args)
+    explanation = Explanation(args, data_loader, explainer_name=args.explainer)
+    reliability, stability = explanation.cal_reliability_stability()
+    return reliability, stability
+
+
 def select_top_k_related_stock(relative_stocks_dict, k=3):
     new_relative_stocks_dict = {}
     for d, s in relative_stocks_dict.items():
@@ -101,7 +110,7 @@ def select_top_k_related_stock(relative_stocks_dict, k=3):
                     sorted_rs = sorted(rs.items(), key=lambda x: x[1], reverse=True)[:_k]
                     stock_dict[os] = sorted_rs
             else:
-                sorted_rs = sorted(rs.items(), key=lambda x:x[1], reverse=True)[:k]
+                sorted_rs = sorted(rs.items(), key=lambda x: x[1], reverse=True)[:k]
                 stock_dict[os] = sorted_rs
         new_relative_stocks_dict[d] = stock_dict
     return new_relative_stocks_dict
@@ -137,14 +146,17 @@ def get_results(args, start_date, end_date, explainer, check_stock_list, check_d
 if __name__ == '__main__':
     args = parse_args()
     args.start_date = '2022-06-01'
-    args.end_date = '2022-06-02'
-    args.explainer = 'xpathExplainer'
+    args.end_date = '2022-06-05'
+    args.explainer = 'inputGradientExplainer'
     args.stock_list = ['SH600018']
     args.date_list = ['2022-06-02']
     s_t = time.time()
-    relative_stocks_dict, score_dict = run_explanation(args)
-    exp_dict = {'relative_stocks_dict': relative_stocks_dict, 'score_dict': score_dict}
-    save_path = r'.\results'
-    with open(r'{}/{}.json'.format(save_path, args.explainer), 'w') as f:
-        json.dump(exp_dict, f)
+    reliability, stability = get_assessment(args)
+    print(reliability, stability)
+
+    # relative_stocks_dict, score_dict = run_explanation(args)
+    # exp_dict = {'relative_stocks_dict': relative_stocks_dict, 'score_dict': score_dict}
+    # save_path = r'.\results'
+    # with open(r'{}/{}.json'.format(save_path, args.explainer), 'w') as f:
+    #     json.dump(exp_dict, f)
 

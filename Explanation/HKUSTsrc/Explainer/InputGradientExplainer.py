@@ -22,19 +22,44 @@ class InputGradientExplainer(nn.Module):
 
         loss = ypred.sum()
         loss.backward()
-
         relation_stocks = self.model.relation_stocks
+        relation_matrix_pres   = self.cal_relation_matrix_pres()
 
-        edge_weight_matrix = InputGradientExplainer.cal_edge_weight(relation_stocks, relation_stocks.grad)
+        edge_weight_matrix = InputGradientExplainer.cal_edge_weight(relation_stocks, relation_stocks.grad, relation_matrix_grad)
         return edge_weight_matrix
 
+    def cal_relation_matrix_pres(self):
+
+        relation_matrix_grad = self.model.relation_matrix.grad * self.model.relation_matrix
+        index = torch.t((relation_matrix_grad == 0).nonzero())
+        ones = torch.ones(relation_matrix_grad.shape[0], relation_matrix_grad.shape[1], relation_matrix_grad.shape[2])
+        max_r = torch.max(relation_matrix_grad, dim=2)[0]
+        min_r = torch.min(relation_matrix_grad, dim=2)[0]
+        max_min = (max_r - min_r)
+        max_min = max_min.unsqueeze(2).repeat(1, 1, relation_matrix_grad.shape[2])
+        min_r_x = min_r.unsqueeze(2).repeat(1, 1, relation_matrix_grad.shape[2])
+        relation_matrix_grad = relation_matrix_grad - min_r_x
+        max_min[index[0], index[1], index[2]] = -100000000000000
+        result = 2 * relation_matrix_grad / max_min - ones
+        result[index[0], index[1], index[2]] = -100000000000000
+
+        softmax = torch.nn.Softmax(dim=2)
+        relation_matrix_pres = softmax(result) * self.model.relation_matrix
+        return relation_matrix_pres
+
+
+
+
+
     @staticmethod
-    def cal_edge_weight(relation_stocks, grad):
+    def cal_edge_weight(relation_stocks, grad, stocks_grad):
         stocks_num = relation_stocks.shape[0]
+        relation_num = relation_stocks.shape[2]
         edge_weight_matrix = torch.zeros((stocks_num, stocks_num))
         for idx in range(stocks_num):
             matrix_feat = relation_stocks[idx, :, :]
             metrix_grad = grad[idx, :, :]
+            input_grad = matrix_feat*metrix_grad
             scores_vector = torch.diag(torch.matmul(metrix_grad, matrix_feat.T))
             edge_weight_matrix[idx, :] = scores_vector
 

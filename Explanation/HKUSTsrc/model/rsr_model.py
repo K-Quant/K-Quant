@@ -70,6 +70,7 @@ class NRSR(nn.Module):
         super().__init__()
         self.relation_stocks = None
         self.attention_weight = None
+        self.relation_matrix = None
         self.using_effect = False
         self.using_attention = False
         self.d_feat = d_feat
@@ -98,11 +99,14 @@ class NRSR(nn.Module):
         x_hidden = x_hidden.permute(0, 2, 1)  # [N, T, F]
         x_hidden, _ = self.rnn(x_hidden)
         x_hidden = x_hidden[:, -1, :]  # [N, 64]
-        ei = x_hidden.unsqueeze(1).repeat(1, relation_matrix.shape[0], 1)  # shape N,N,64
+        ei = x_hidden.unsqueeze(1).repeat(1, relation_matrix.shape[0], 1)
+        a = x_hidden.unsqueeze(0)# shape N,N,64
         hidden_batch = x_hidden.unsqueeze(0).repeat(relation_matrix.shape[0], 1, 1) # shape N,N,64
         # 分离叶子节点
         hidden_batch = hidden_batch.detach()
         hidden_batch.requires_grad = True
+        relation_matrix = relation_matrix.detach()
+        relation_matrix.requires_grad = True
 
         matrix = torch.cat((ei, hidden_batch, relation_matrix), 2)# matrix shape N,N,64+关系数
         weight = (torch.matmul(matrix, self.W) + self.b).squeeze(2)  # weight shape N,N
@@ -110,11 +114,6 @@ class NRSR(nn.Module):
         mask = torch.sum(relation_matrix, 2)# mask that could have relation value
         index_2 = torch.t((mask == 0).nonzero())
         valid_weight = mask * weight
-
-        if self.using_effect:
-            self.relation_stocks = hidden_batch
-        if self.using_attention:
-            self.attention_weight = valid_weight
 
         valid_weight[index_2[0], index_2[1]] = -1000000
         valid_weight = self.softmax1(valid_weight)
@@ -124,6 +123,7 @@ class NRSR(nn.Module):
 
         if self.using_effect:
             self.relation_stocks = hidden_batch
+            self.relation_matrix = relation_matrix
         if self.using_attention:
             self.attention_weight = valid_weight
         return pred_all

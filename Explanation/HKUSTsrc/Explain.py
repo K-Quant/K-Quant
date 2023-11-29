@@ -11,6 +11,7 @@ from tqdm import tqdm
 # from Config import config
 from Explanation.HKUSTsrc.Explainer import *
 from Explanation.HKUSTsrc.model import *
+from Explanation.utils.Evaluation import metric_fn
 
 
 # from dataloader import DataLoader, create_loaders
@@ -81,6 +82,18 @@ class Explanation:
 
     def get_data_loader(self, data_loader):
         self.data_loader = data_loader
+
+    def cal_reliability_stability(self):
+        data_loader = self.data_loader
+        preds = []
+        for i, slc in tqdm(self.data_loader.iter_daily(), total=self.data_loader.daily_length):
+            feature, label, market_value, stock_index, index = data_loader.get(slc)
+            graph = self.graph_data[stock_index][:, stock_index]
+            pred = self.pred_model(feature, graph)
+            preds.append(pd.DataFrame({'score': pred.detach().numpy(), 'label': label.detach().numpy(), }, index=index))
+        preds = pd.concat(preds, axis=0)
+        reliability, stability = metric_fn(preds)
+        return reliability, stability
 
     def explain(self):
         data_loader = self.data_loader
