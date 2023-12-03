@@ -1,7 +1,10 @@
 import json
 
+import numpy as np
+import pandas as pd
 # import numpy as np
 import torch
+from tqdm import tqdm
 
 from Assessment.dataloader import create_data_loaders
 from Model.model_pool.utils.utils import DotDict
@@ -26,9 +29,7 @@ relation_model_dict = [
 ]
 
 
-def set_model(args, device):
-    param_dict = json.load(open(args.model_path + "/" + args.model_name + '/info.json'))['config']
-    stock2stock_matrix = param_dict['stock2stock_matrix']
+def set_model(args, param_dict, device):
     if param_dict['model_name'] == 'SFM':
         model = get_model(param_dict['model_name'])(d_feat=param_dict['d_feat'], output_dim=32, freq_dim=25,
                                                     hidden_size=param_dict['hidden_size'],
@@ -56,11 +57,33 @@ def cal_assessment():
     pass
 
 
+def predict(param_dict, data_loader, model, device):
+    model.eval()
+    preds = []
+    stock2stock_matrix = param_dict["stock2stock_matrix"]
+    stock2stock_matrix = torch.Tensor(np.load(stock2stock_matrix)).to(device)
+    for i, slc in tqdm(data_loader.iter_daily(), total=data_loader.daily_length):
+        feature, label, market_value, stock_index, index = data_loader.get(slc)
+        with torch.no_grad():
+            if param_dict['model_name'] in relation_model_dict:
+                pred = model(feature, stock2stock_matrix[stock_index][:, stock_index])
+            elif param_dict['model_name'] in time_series_library:
+                pred = model(feature, mask)
+            else:
+                pred = model(feature)
+
+            preds.append(
+                pd.DataFrame({param_dict['model_name'] + '_score': pred.cpu().numpy(), 'label': label.cpu().numpy(), },
+                             index=index)
+            )
+    preds = pd.concat(preds, axis=0)
+    return preds
+
+
 def main(args):
     data_loader = create_data_loaders(args)
-
-    set_model(args, args.device)
-
-
-
+    param_dict = json.load(open(args.model_path + "/" + args.model_name + '/info.json'))['config']
+    model = set_model(args, param_dict, args.device)
+    preds = predict(param_dict, data_loader, model, args.device)
+    return preds
 

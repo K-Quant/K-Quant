@@ -1,5 +1,5 @@
 from Explanation.HKUSTsrc import NRSR
-from Model.model_pool.models.model import MLP, LSTM, GRU, GAT
+from Model.model_pool.models.model import MLP, LSTM, GRU, GAT, ALSTM
 
 
 def get_model(model_name):
@@ -14,6 +14,8 @@ def get_model(model_name):
     if model_name.upper() == 'GRU':
         return GRU
         # return GRUModel
+    if model_name.upper() == 'ALSTM':
+        return ALSTM
 
     if model_name.upper() == 'GATS':
         return GAT
