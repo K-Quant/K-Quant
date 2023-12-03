@@ -22,7 +22,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # model
-    parser.add_argument('--model_name', default='ALSTM')
+    parser.add_argument('--model_name', default='KEnhance')
     parser.add_argument('--model_path', default='D:\ProjectCodes\K-Quant\parameter')
     parser.add_argument('--num_relation', type= int, default=102)
     parser.add_argument('--d_feat', type=int, default=6)

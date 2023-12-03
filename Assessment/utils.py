@@ -1,9 +1,9 @@
 from Explanation.HKUSTsrc import NRSR
-from Model.model_pool.models.model import MLP, LSTM, GRU, GAT, ALSTM
+from Model.model_pool.models.model import MLP, LSTM, GRU, GAT, ALSTM, KEnhance
 
 
 def get_model(model_name):
-
+    a = model_name.upper()
     if model_name.upper() == 'MLP':
         return MLP
 
@@ -22,3 +22,9 @@ def get_model(model_name):
 
     if model_name.upper() == "NRSR":
         return NRSR
+
+    if model_name.upper() == "NRSR":
+        return NRSR
+
+    if model_name == "KEnhance":
+        return KEnhance
