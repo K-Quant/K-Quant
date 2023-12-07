@@ -1,5 +1,5 @@
 from Explanation.HKUSTsrc import NRSR
-from Model.model_pool.models.model import MLP, LSTM, GRU, GAT, ALSTM, KEnhance
+from Model.model_pool.models.model import MLP, LSTM, GRU, GAT, ALSTM, KEnhance, relation_GATs
 
 
 def get_model(model_name):
@@ -23,8 +23,8 @@ def get_model(model_name):
     if model_name.upper() == "NRSR":
         return NRSR
 
-    if model_name.upper() == "NRSR":
-        return NRSR
+    if model_name == "relation_GATs":
+        return relation_GATs
 
     if model_name == "KEnhance":
         return KEnhance

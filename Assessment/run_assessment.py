@@ -9,6 +9,7 @@ from tqdm import tqdm
 from Assessment.dataloader import create_data_loaders
 from Model.model_pool.utils.utils import DotDict
 from utils import get_model
+from metrics import cal_reliability, cal_stability
 
 time_series_library = [
     'DLinear',
@@ -23,7 +24,6 @@ time_series_library = [
 
 relation_model_dict = [
     'NRSR',
-    'relation_GATs',
     'relation_GATs_3heads',
     'KEnhance'
 ]
@@ -40,7 +40,8 @@ def set_model(args, param_dict, device):
     elif param_dict['model_name'] == 'Transformer':
         model = get_model(param_dict['model_name'])(param_dict['d_feat'], param_dict['hidden_size'],
                                                     param_dict['num_layers'], dropout=0.5)
-    elif param_dict['model_name'] in relation_model_dict:  # the number of relations
+    elif param_dict['model_name'] == 'NRSR':
+        # the number of relations
         model = get_model(param_dict['model_name'])(num_relation=args.num_relation, d_feat=param_dict['d_feat'],
                                                     num_layers=param_dict['num_layers'])
     elif param_dict['model_name'] in time_series_library:
@@ -53,8 +54,10 @@ def set_model(args, param_dict, device):
     return model
 
 
-def cal_assessment():
-    pass
+def cal_assessment(preds):
+    reliability = cal_reliability(preds)
+    stability = cal_stability(preds)
+    return reliability, stability
 
 
 def predict(param_dict, data_loader, model, device):
@@ -65,7 +68,7 @@ def predict(param_dict, data_loader, model, device):
     for i, slc in tqdm(data_loader.iter_daily(), total=data_loader.daily_length):
         feature, label, market_value, stock_index, index = data_loader.get(slc)
         with torch.no_grad():
-            if param_dict['model_name'] in relation_model_dict:
+            if param_dict['model_name'] == 'NRSR' or 'relation_GATs':
                 pred = model(feature, stock2stock_matrix[stock_index][:, stock_index])
             elif param_dict['model_name'] in time_series_library:
                 pred = model(feature, mask)
@@ -73,7 +76,7 @@ def predict(param_dict, data_loader, model, device):
                 pred = model(feature)
 
             preds.append(
-                pd.DataFrame({param_dict['model_name'] + '_score': pred.cpu().numpy(), 'label': label.cpu().numpy(), },
+                pd.DataFrame({'score': pred.cpu().numpy(), 'label': label.cpu().numpy(), },
                              index=index)
             )
     preds = pd.concat(preds, axis=0)
@@ -85,5 +88,6 @@ def main(args):
     param_dict = json.load(open(args.model_path + "/" + args.model_name + '/info.json'))['config']
     model = set_model(args, param_dict, args.device)
     preds = predict(param_dict, data_loader, model, args.device)
-    return preds
+    reliability, stability = cal_assessment(preds)
+    return reliability, stability
 

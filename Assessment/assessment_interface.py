@@ -22,7 +22,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # model
-    parser.add_argument('--model_name', default='KEnhance')
+    parser.add_argument('--model_name', default='relation_GATs')
     parser.add_argument('--model_path', default='D:\ProjectCodes\K-Quant\parameter')
     parser.add_argument('--num_relation', type= int, default=102)
     parser.add_argument('--d_feat', type=int, default=6)
@@ -60,7 +60,7 @@ def parse_args():
     parser.add_argument('--least_samples_num', type=float, default=1137.0)
     parser.add_argument('--label', default='')  # specify other labels
     parser.add_argument('--start_date', default='2019-01-01')
-    parser.add_argument('--end_date', default='2020-12-31')
+    parser.add_argument('--end_date', default='2019-05-31')
 
     # input for csi 300
     parser.add_argument('--data_root', default='D:\ProjectCodes\K-Quant\Data')
@@ -78,4 +78,5 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    main(args)
+    print(main(args))
+
