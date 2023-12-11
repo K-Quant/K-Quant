@@ -150,13 +150,9 @@ if __name__ == '__main__':
     args.explainer = 'inputGradientExplainer'
     args.stock_list = ['SH600018']
     args.date_list = ['2022-06-02']
-    s_t = time.time()
-    reliability, stability = get_assessment(args)
-    print(reliability, stability)
-
-    # relative_stocks_dict, score_dict = run_explanation(args)
-    # exp_dict = {'relative_stocks_dict': relative_stocks_dict, 'score_dict': score_dict}
-    # save_path = r'.\results'
-    # with open(r'{}/{}.json'.format(save_path, args.explainer), 'w') as f:
-    #     json.dump(exp_dict, f)
+    relative_stocks_dict, score_dict = run_explanation(args)
+    exp_dict = {'relative_stocks_dict': relative_stocks_dict, 'score_dict': score_dict}
+    save_path = r'.\results'
+    with open(r'{}/{}.json'.format(save_path, args.explainer), 'w') as f:
+        json.dump(exp_dict, f)
 

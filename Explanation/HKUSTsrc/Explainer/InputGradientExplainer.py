@@ -1,10 +1,10 @@
-
+from copy import deepcopy
 
 import numpy as np
+from sklearn.preprocessing import RobustScaler
+
 import torch.nn as nn
 import torch
-
-
 
 
 class InputGradientExplainer(nn.Module):
@@ -23,14 +23,14 @@ class InputGradientExplainer(nn.Module):
         loss = ypred.sum()
         loss.backward()
         relation_stocks = self.model.relation_stocks
-        relation_matrix_pres   = self.cal_relation_matrix_pres()
+        relation_matrix_pres = self.cal_relation_matrix_pres()
 
-        edge_weight_matrix = InputGradientExplainer.cal_edge_weight(relation_stocks, relation_stocks.grad, relation_matrix_grad)
+        edge_weight_matrix = InputGradientExplainer.cal_edge_weight(relation_stocks, relation_stocks.grad,
+                                                                    relation_matrix_pres)
         return edge_weight_matrix
 
     def cal_relation_matrix_pres(self):
-
-        relation_matrix_grad = self.model.relation_matrix.grad * self.model.relation_matrix
+        relation_matrix_grad = self.model.relation_matrix.grad * self.model.relation_matrix  # 消除没有关系的股票
         index = torch.t((relation_matrix_grad == 0).nonzero())
         ones = torch.ones(relation_matrix_grad.shape[0], relation_matrix_grad.shape[1], relation_matrix_grad.shape[2])
         max_r = torch.max(relation_matrix_grad, dim=2)[0]
@@ -47,23 +47,37 @@ class InputGradientExplainer(nn.Module):
         relation_matrix_pres = softmax(result) * self.model.relation_matrix
         return relation_matrix_pres
 
-
-
-
-
     @staticmethod
     def cal_edge_weight(relation_stocks, grad, stocks_grad):
         stocks_num = relation_stocks.shape[0]
         relation_num = relation_stocks.shape[2]
         edge_weight_matrix = torch.zeros((stocks_num, stocks_num))
         for idx in range(stocks_num):
-            matrix_feat = relation_stocks[idx, :, :]
+            matrix_feat = relation_stocks[:, idx, :]
             metrix_grad = grad[idx, :, :]
-            input_grad = matrix_feat*metrix_grad
             scores_vector = torch.diag(torch.matmul(metrix_grad, matrix_feat.T))
             edge_weight_matrix[idx, :] = scores_vector
+        # 保存原始矩阵的副本
 
-        edge_weight_matrix = edge_weight_matrix*10**5
+        original_matrix = edge_weight_matrix.clone()
+
+        # 计算非零元素的均值和标准差
+        non_zero_elements = edge_weight_matrix[edge_weight_matrix != 0]
+        mean_val = torch.mean(non_zero_elements)
+        std_val = torch.std(non_zero_elements)
+
+        # 对非零元素进行标准化
+        edge_weight_matrix[edge_weight_matrix != 0] = (non_zero_elements - mean_val) / std_val
+
+        # 用原始矩阵的副本来重新设置那些原本为零的元素
+
+        edge_weight_matrix = torch.sigmoid(edge_weight_matrix)
+        edge_weight_matrix[original_matrix == 0] = 0
+        non_zero_elements = edge_weight_matrix.detach().numpy()
+
+
+
+
         return edge_weight_matrix
 
 # if __name__ == '__main__':
@@ -97,16 +111,3 @@ class InputGradientExplainer(nn.Module):
 #         b = graph_data[stock_index][:, stock_index]
 #         a = effect_explainer_explain(model, feature, graph_data[stock_index][:, stock_index], label)
 #         break
-
-
-
-
-
-
-
-
-
-
-
-
-

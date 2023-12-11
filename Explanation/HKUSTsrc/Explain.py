@@ -79,7 +79,7 @@ class Explanation:
     def load_data(self):
         self.graph_data = torch.Tensor(np.load(self.graph_data_path)).to(self.device)
         self.num_relation = self.graph_data.shape[2]
-        print(1)
+
 
     def get_data_loader(self, data_loader):
         self.data_loader = data_loader
