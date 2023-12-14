@@ -25,9 +25,9 @@ class InputGradientExplainer(nn.Module):
         relation_stocks = self.model.relation_stocks
         relation_matrix_pres = self.cal_relation_matrix_pres()
 
-        edge_weight_matrix = InputGradientExplainer.cal_edge_weight(relation_stocks, relation_stocks.grad,
+        relation_edge_weight_matrix = InputGradientExplainer.cal_edge_weight(relation_stocks, relation_stocks.grad,
                                                                     relation_matrix_pres)
-        return edge_weight_matrix
+        return relation_edge_weight_matrix
 
     def cal_relation_matrix_pres(self):
         relation_matrix_grad = self.model.relation_matrix.grad * self.model.relation_matrix  # 消除没有关系的股票
@@ -50,7 +50,7 @@ class InputGradientExplainer(nn.Module):
     @staticmethod
     def cal_edge_weight(relation_stocks, grad, stocks_grad):
         stocks_num = relation_stocks.shape[0]
-        relation_num = relation_stocks.shape[2]
+        relation_num = stocks_grad.shape[2]
         edge_weight_matrix = torch.zeros((stocks_num, stocks_num))
         for idx in range(stocks_num):
             matrix_feat = relation_stocks[:, idx, :]
@@ -73,12 +73,11 @@ class InputGradientExplainer(nn.Module):
 
         edge_weight_matrix = torch.sigmoid(edge_weight_matrix)
         edge_weight_matrix[original_matrix == 0] = 0
-        non_zero_elements = edge_weight_matrix.detach().numpy()
 
+        edge_weight_matrix_3d = edge_weight_matrix.unsqueeze(2).repeat(1, 1, relation_num)
+        relation_edge_weight_matrix = edge_weight_matrix_3d * stocks_grad
 
-
-
-        return edge_weight_matrix
+        return relation_edge_weight_matrix
 
 # if __name__ == '__main__':
 #     device = 'cpu'
