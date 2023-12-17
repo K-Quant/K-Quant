@@ -555,7 +555,11 @@ class ALSTM(nn.Module):
 class relation_GATs(nn.Module):
     def __init__(self, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0, base_model="GRU"):
         super().__init__()
-
+        self.relation_stocks = None
+        self.attention_weight = None
+        self.relation_matrix = None
+        self.using_effect = False
+        self.using_attention = False
         self.d_feat = d_feat
         self.hidden_size = hidden_size
 
@@ -594,7 +598,13 @@ class relation_GATs(nn.Module):
         # update embedding using relation_matrix
         # relation matrix shape [N, N]
         ei = x_hidden.unsqueeze(1).repeat(1, relation_matrix.shape[0], 1)  # shape N,N,64
-        hidden_batch = x_hidden.unsqueeze(0).repeat(relation_matrix.shape[0], 1, 1)  # shape N,N,64
+        hidden_batch = x_hidden.unsqueeze(0).repeat(relation_matrix.shape[0], 1, 1) # shape N,N,64
+
+        hidden_batch = hidden_batch.detach()
+        hidden_batch.requires_grad = True
+        relation_matrix = relation_matrix.detach()
+        relation_matrix.requires_grad = True
+
         matrix = torch.cat((ei, hidden_batch), 2)  # matrix shape N,N,64*2
         weight = (torch.matmul(matrix, self.W) + self.b).squeeze(2)  # weight shape N,N
         weight = self.leaky_relu(weight)  # relu layer
@@ -609,6 +619,11 @@ class relation_GATs(nn.Module):
         hidden = torch.cat((x_hidden, hidden), 1)
         # now hidden shape (N,64) stores all new embeddings
         pred = self.fc(hidden).squeeze()
+        if self.using_effect:
+            self.relation_stocks = hidden_batch
+            self.relation_matrix = relation_matrix
+        if self.using_attention:
+            self.attention_weight = valid_weight
         return pred
 
 

@@ -80,7 +80,6 @@ class Explanation:
         self.graph_data = torch.Tensor(np.load(self.graph_data_path)).to(self.device)
         self.num_relation = self.graph_data.shape[2]
 
-
     def get_data_loader(self, data_loader):
         self.data_loader = data_loader
 
@@ -98,30 +97,14 @@ class Explanation:
 
     def explain(self):
         data_loader = self.data_loader
-        self.exp_result_dict = {}
+        exp_result_dict = {}
         for i, slc in tqdm(self.data_loader.iter_daily(), total=self.data_loader.daily_length):
             feature, label, market_value, stock_index, index = data_loader.get(slc)
             date = datetime.datetime.date(index[0][0])
             graph = self.graph_data[stock_index][:, stock_index]
-            original_pred = self.pred_model(feature, graph)
-            if self.explainer_name == 'random':
-                ran_k_graph, ran_k_comp_graph = self.random_edges_extraction(graph)
-                fidelity_L1, causality_L1 = self.cal_random_selection_metrics(original_pred, label,
-                                                                              feature, ran_k_graph,
-                                                                              ran_k_comp_graph)
-                self.evaluation_results += [[fidelity_L1, causality_L1]]
-
-            else:
-                expl_graph = self.explainer.run_explain(feature, graph)
-                self.EG = nx.from_numpy_array(expl_graph.detach().numpy())
-                self.explained_graph_dict[self.explainer_name] += [self.EG]
-                f_list, c_list = self.evaluate(original_pred, graph, feature, label)
-                s_score = [1 - self.args.top_p for i in range(stock_index.shape[0])]
-
-                expl_graph = self.EG
-                self.exp_result_dict[str(date)] = {'expl_graph': expl_graph, 'stock_index_in_adj': stock_index,
-                                                   'f_list': f_list, 'c_list': c_list,
-                                                   's_list': s_score}
+            expl_graph = self.explainer.run_explain(feature, graph)
+            exp_result_dict[str(date)] = {'expl_graph': expl_graph, 'origin_graph': graph, 'feature': feature, 'stock_index_in_adj': stock_index}
+        return exp_result_dict
 
     def save_explanation(self):
         file = r'{}/{}-{}.pkl'.format(self.args.expl_results_dir, self.explainer_name, self.year)
@@ -187,110 +170,33 @@ class Explanation:
         mean_causality_L1 = self.eval_results_df['causality_L1'].mean()
         return mean_fidelity_L1, mean_causality_L1
 
-    def check_all_assessment_score(self):
-        _stock_index = np.load(self.args.stock_index, allow_pickle=True).item()
-        score_dict = {}
-        for date, v in  self.exp_result_dict.items():
-            score_dict[date] = {}
-            stock_index_in_adj = self.exp_result_dict[date]['stock_index_in_adj'].numpy().tolist()
-            for ind in range(len(self.exp_result_dict[date]['f_list'])):
-                f_score = self.exp_result_dict[date]['f_list'][ind] if self.exp_result_dict[date]['f_list'][
-                                                                           ind] > 0 else 0
-                c_score = self.exp_result_dict[date]['c_list'][ind] if self.exp_result_dict[date]['c_list'][
-                                                                           ind] > 0 else 0
-                s_score = self.exp_result_dict[date]['s_list'][ind]
+    def evaluate_explanation(self, feature, relation_matrix, explanation_matrix, p=0.2):
+        top_p_matrix = Explanation.select_top_pers_edge(explanation_matrix, p)
+        top_p_comp_matrix = relation_matrix - top_p_matrix
+        pred_top_k = self.pred_model(feature, top_p_matrix)
+        pred_top_k_comp = self.pred_model(feature, top_p_comp_matrix)
+        pred_origin = self.pred_model(feature, relation_matrix)
+        fidelity = Explanation.cal_fidelity(pred_top_k, pred_origin)
+        return fidelity
 
-                f_score = f_score * 5
-                c_score = c_score * 5
-                s_score = s_score * 5
+    @staticmethod
+    # matrix 的维度为3
+    def select_top_pers_edge(matrix, p):
+        # 找出所有非零边的索引
+        non_zero_indices = torch.nonzero(matrix)
+        # 获得非零边的权重，并在找出前20%的边
+        non_zero_weights = matrix[
+            non_zero_indices[:, 0], non_zero_indices[:, 1], non_zero_indices[:, 2]]
+        k = int(non_zero_weights.numel() * p)
+        topk_values, tops_indices = torch.topk(non_zero_weights, k)
 
-                score = f_score + c_score + s_score
-                stock = index_2_stock(ind, stock_index_in_adj, _stock_index)
-                score_dict[date][stock] = {'score': score,
-                                           'f_score': f_score,
-                                           'c_score': c_score,
-                                           's_score': s_score}
-        return score_dict
+        # 创建全零张量
+        top_pers_edges = torch.zeros_like(matrix)
 
-
-
-
-    def check_assessment_score(self):
-        _stock_index = np.load(self.args.stock_index, allow_pickle=True).item()
-        score_dict = {}
-        for date in self.args.date_list:
-            if date not in self.exp_result_dict.keys():
-                print('{} is not in the prediction day...'.format(date))
-                continue
-            score_dict[date] = {}
-
-            stock_index_in_adj = self.exp_result_dict[date]['stock_index_in_adj'].numpy().tolist()
-            for stock in self.args.stock_list:
-                ind = stock_2_index(stock, stock_index_in_adj, _stock_index)
-                f_score = self.exp_result_dict[date]['f_list'][ind] if self.exp_result_dict[date]['f_list'][ind] > 0 else 0
-                c_score = self.exp_result_dict[date]['c_list'][ind] if self.exp_result_dict[date]['c_list'][ind] > 0 else 0
-                s_score = self.exp_result_dict[date]['s_list'][ind]
-
-                f_score = f_score * 5
-                c_score = c_score * 5
-                s_score = s_score * 5
-
-                score = f_score + c_score + s_score
-                score_dict[date][stock] = {'score': score,
-                                           'f_score': f_score,
-                                           'c_score': c_score,
-                                           's_score': s_score}
-        return score_dict
-
-    def check_all_relative_stock(self):
-        _stock_index = np.load(self.args.stock_index, allow_pickle=True).item()
-        relative_stocks_dict = {}
-        for date in self.exp_result_dict.keys():
-            exp_graph = self.exp_result_dict[date]['expl_graph']
-            stock_index_in_adj = self.exp_result_dict[date]['stock_index_in_adj'].numpy().tolist()
-            relative_stocks_dict[date] = {}
-            for stock_i in stock_index_in_adj:
-                stock = v_2_key(_stock_index, stock_i)
-                ind = stock_2_index(stock, stock_index_in_adj, _stock_index)
-                relative_stock_ind = [x for x in exp_graph.neighbors(ind)]
-                relative_stock_weight = [exp_graph.adj[ind][x]['weight'] for x in relative_stock_ind]
-
-                relative_stock = [index_2_stock(index, stock_index_in_adj, _stock_index) for index in
-                                  relative_stock_ind]
-
-                relative_stocks_dict[date][stock] = {}
-
-                for i, s in enumerate(relative_stock):
-                    relative_stocks_dict[date][stock][s] = relative_stock_weight[i]
-
-        relative_stocks_dict = Explanation.select_top_k_related_stock(relative_stocks_dict,
-                                                                      k=self.args.top_k)
-        return relative_stocks_dict
-
-    def check_relative_stock(self):
-        _stock_index = np.load(self.args.stock_index, allow_pickle=True).item()
-        relative_stocks_dict = {}
-        for date in self.args.date_list:
-            if date not in self.exp_result_dict.keys():
-                print('{} is not in the prediction day...'.format(date))
-                continue
-            exp_graph = self.exp_result_dict[date]['expl_graph']
-            stock_index_in_adj = self.exp_result_dict[date]['stock_index_in_adj'].numpy().tolist()
-            for stock in self.args.stock_list:
-                ind = stock_2_index(stock, stock_index_in_adj, _stock_index)
-                relative_stock_ind = [x for x in exp_graph.neighbors(ind)]
-                relative_stock_weight = [exp_graph.adj[ind][x]['weight'] for x in relative_stock_ind]
-
-                relative_stock = [index_2_stock(index, stock_index_in_adj, _stock_index) for index in
-                                  relative_stock_ind]
-                relative_stocks_dict[date] = {stock: {}}
-
-                for i, s in enumerate(relative_stock):
-                    relative_stocks_dict[date][stock][s] = relative_stock_weight[i]
-
-        relative_stocks_dict = Explanation.select_top_k_related_stock(relative_stocks_dict,
-                                                                      k=self.args.top_k)
-        return relative_stocks_dict
+        # 将对应的位置换成1
+        top_pers_edges[non_zero_indices[tops_indices, 0], non_zero_indices[tops_indices, 1],
+        non_zero_indices[tops_indices, 2]] = 1
+        return top_pers_edges
 
     @staticmethod
     def select_top_k_related_stock(relative_stocks_dict, k=3):
@@ -314,15 +220,12 @@ class Explanation:
         return new_G
 
     @staticmethod
-    def cal_fidelity(top_k_comp_pred, top_k_pred, original_pred):
+    def cal_fidelity(top_k_pred, original_pred):
         # L1
         loss_func = torch.nn.L1Loss(reduction='none')
-        top_k_l1 = loss_func(top_k_pred, original_pred).detach().numpy()
-        top_k_comp_l1 = loss_func(top_k_comp_pred, original_pred).detach().numpy()
-        top_k_comp_l1[top_k_comp_l1 == 0] = 0.00001
-        fidelity_array = 1 - top_k_l1 / top_k_comp_l1
-        fidelity_array[fidelity_array < -1] = -1
-        return fidelity_array
+        top_k = loss_func(top_k_pred, original_pred).detach().numpy()
+        mean_fidelity = np.mean(top_k)
+        return mean_fidelity
 
     @staticmethod
     def cal_causality(top_k_comp_pred, original_pred, label):
@@ -349,6 +252,7 @@ def index_2_stock(index, stock_index_in_adj, stock_index):
     index = stock_index_in_adj[index]
     stock = [x for x in stock_index.keys() if stock_index[x] == index]
     return stock[0]
+
 
 def v_2_key(dict, v):
     values = list(dict.values())

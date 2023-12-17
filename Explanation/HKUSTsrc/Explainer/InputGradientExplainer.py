@@ -45,6 +45,7 @@ class InputGradientExplainer(nn.Module):
 
         softmax = torch.nn.Softmax(dim=2)
         relation_matrix_pres = softmax(result) * self.model.relation_matrix
+        del relation_matrix_grad, max_r, min_r
         return relation_matrix_pres
 
     @staticmethod
@@ -63,6 +64,7 @@ class InputGradientExplainer(nn.Module):
 
         # 计算非零元素的均值和标准差
         non_zero_elements = edge_weight_matrix[edge_weight_matrix != 0]
+
         mean_val = torch.mean(non_zero_elements)
         std_val = torch.std(non_zero_elements)
 
@@ -73,10 +75,11 @@ class InputGradientExplainer(nn.Module):
 
         edge_weight_matrix = torch.sigmoid(edge_weight_matrix)
         edge_weight_matrix[original_matrix == 0] = 0
-
         edge_weight_matrix_3d = edge_weight_matrix.unsqueeze(2).repeat(1, 1, relation_num)
         relation_edge_weight_matrix = edge_weight_matrix_3d * stocks_grad
-
+        a = torch.nonzero(relation_edge_weight_matrix)
+        b = a[:, 0]
+        c = a[:, 1]
         return relation_edge_weight_matrix
 
 # if __name__ == '__main__':

@@ -10,7 +10,7 @@ def parse_args():
 
     parser.add_argument('--device', default='cpu')
 
-    #地址
+    # 地址
     parser.add_argument("--data_root", type=str, default="D:\ProjectCodes\K-Quant\Data",
                         help="graph_data root path")
     parser.add_argument("--ckpt_root", type=str, default=r".\pretrianedModel\tmp_ckpt",
@@ -40,7 +40,7 @@ def parse_args():
                         choices=["A_share"], help="market name")
 
     parser.add_argument('--start_date', type=str, default='2021-01-03')
-    parser.add_argument('--end_date', type=str,  default='2021-01-05')
+    parser.add_argument('--end_date', type=str, default='2021-01-05')
     parser.add_argument('--top_k', type=float, default=3)
     parser.add_argument('--top_p', type=float, default=0.2)
 
@@ -57,7 +57,7 @@ def run_explanation(args):
         def select_explanation(args, exp_dict):
             new_exp_dict = {}
             for date in args.date_list:
-                new_exp_dict[date] ={}
+                new_exp_dict[date] = {}
                 exp = exp_dict[date]
                 for stock in args.stock_list:
                     if stock not in exp.keys():
@@ -88,6 +88,28 @@ def run_explanation(args):
         relative_stocks_dict = explanation.check_all_relative_stock()
         score_dict = explanation.check_all_assessment_score()
         return relative_stocks_dict, score_dict
+
+
+def run_input_gradient_explanation(args):
+    if not args.explainer == 'inputGradientExplainer':
+        return None
+    data_loader = create_data_loaders(args)
+    explanation = Explanation(args, data_loader, explainer_name=args.explainer)
+    exp_result_dict = explanation.explain()
+    return exp_result_dict, explanation
+
+
+def evaluate_fidelity(explanation, exp_result_dict, p=0.2):
+    if exp_result_dict is None:
+        print("exp_result_dict is None")
+    evaluation_results = {}
+    for date, exp in exp_result_dict.items():
+        expl_graph = exp['expl_graph']
+        origin_graph = exp['origin_graph']
+        feature = exp['feature']
+        fidelity = explanation.evaluate_explanation(feature, expl_graph, origin_graph, p=p)
+        evaluation_results[date] = fidelity
+    return evaluation_results
 
 
 def get_assessment(args):
@@ -146,13 +168,14 @@ def get_results(args, start_date, end_date, explainer, check_stock_list, check_d
 if __name__ == '__main__':
     args = parse_args()
     args.start_date = '2022-06-01'
-    args.end_date = '2022-06-05'
+    args.end_date = '2022-07-05'
     args.explainer = 'inputGradientExplainer'
     args.stock_list = ['SH600018']
     args.date_list = ['2022-06-02']
-    relative_stocks_dict, score_dict = run_explanation(args)
-    exp_dict = {'relative_stocks_dict': relative_stocks_dict, 'score_dict': score_dict}
-    save_path = r'.\results'
-    with open(r'{}/{}.json'.format(save_path, args.explainer), 'w') as f:
-        json.dump(exp_dict, f)
-
+    exp_result_dict, explanation = run_input_gradient_explanation(args)
+    fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.3)
+    print(fidelity)
+    # exp_dict = {'relative_stocks_dict': relative_stocks_dict, 'score_dict': score_dict}
+    # save_path = r'.\results'
+    # with open(r'{}/{}.json'.format(save_path, args.explainer), 'w') as f:
+    #     json.dump(exp_dict, f)
