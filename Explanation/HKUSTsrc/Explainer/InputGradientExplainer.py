@@ -25,6 +25,7 @@ class InputGradientExplainer(nn.Module):
         relation_stocks = self.model.relation_stocks
         relation_matrix_pres = self.cal_relation_matrix_pres()
 
+
         relation_edge_weight_matrix = InputGradientExplainer.cal_edge_weight(relation_stocks, relation_stocks.grad,
                                                                     relation_matrix_pres)
         return relation_edge_weight_matrix
@@ -77,9 +78,6 @@ class InputGradientExplainer(nn.Module):
         edge_weight_matrix[original_matrix == 0] = 0
         edge_weight_matrix_3d = edge_weight_matrix.unsqueeze(2).repeat(1, 1, relation_num)
         relation_edge_weight_matrix = edge_weight_matrix_3d * stocks_grad
-        a = torch.nonzero(relation_edge_weight_matrix)
-        b = a[:, 0]
-        c = a[:, 1]
         return relation_edge_weight_matrix
 
 # if __name__ == '__main__':

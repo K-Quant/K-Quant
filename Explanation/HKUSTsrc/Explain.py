@@ -6,6 +6,7 @@ import pandas as pd
 
 import random
 
+import torch
 from tqdm import tqdm
 
 # from Config import config
@@ -103,7 +104,11 @@ class Explanation:
             date = datetime.datetime.date(index[0][0])
             graph = self.graph_data[stock_index][:, stock_index]
             expl_graph = self.explainer.run_explain(feature, graph)
-            exp_result_dict[str(date)] = {'expl_graph': expl_graph, 'origin_graph': graph, 'feature': feature, 'stock_index_in_adj': stock_index}
+
+            exp_result_dict[str(date)] = {'expl_graph': expl_graph.detach().numpy(),
+                                          'origin_graph': graph.detach().numpy(),
+                                          'feature': feature.detach().numpy(),
+                                          'stock_index_in_adj': stock_index.detach().numpy()}
         return exp_result_dict
 
     def save_explanation(self):
@@ -170,13 +175,20 @@ class Explanation:
         mean_causality_L1 = self.eval_results_df['causality_L1'].mean()
         return mean_fidelity_L1, mean_causality_L1
 
-    def evaluate_explanation(self, feature, relation_matrix, explanation_matrix, p=0.2):
+    def evaluate_explanation(self, feature, explanation_matrix, origin_matrix, p=0.2):
+        feature = torch.tensor(feature) if not torch.is_tensor(feature) else feature
+        origin_matrix = torch.tensor(origin_matrix) if not torch.is_tensor(origin_matrix) else origin_matrix
+        explanation_matrix = torch.tensor(explanation_matrix) if not torch.is_tensor(explanation_matrix) else explanation_matrix
+
+
         top_p_matrix = Explanation.select_top_pers_edge(explanation_matrix, p)
-        top_p_comp_matrix = relation_matrix - top_p_matrix
+        top_p_comp_matrix = origin_matrix - top_p_matrix
         pred_top_k = self.pred_model(feature, top_p_matrix)
         pred_top_k_comp = self.pred_model(feature, top_p_comp_matrix)
-        pred_origin = self.pred_model(feature, relation_matrix)
-        fidelity = Explanation.cal_fidelity(pred_top_k, pred_origin)
+        pred_origin = self.pred_model(feature, origin_matrix)
+
+
+        fidelity = Explanation.cal_fidelity(pred_top_k, pred_top_k_comp, pred_origin)
         return fidelity
 
     @staticmethod
@@ -220,11 +232,14 @@ class Explanation:
         return new_G
 
     @staticmethod
-    def cal_fidelity(top_k_pred, original_pred):
+    def cal_fidelity(top_k_pred, top_k_com_pred, original_pred):
         # L1
         loss_func = torch.nn.L1Loss(reduction='none')
-        top_k = loss_func(top_k_pred, original_pred).detach().numpy()
-        mean_fidelity = np.mean(top_k)
+        fidelity_s = loss_func(top_k_pred, original_pred).detach().numpy()
+        fidelity_c = loss_func(top_k_com_pred, original_pred).detach().numpy()
+        fidelity = fidelity_c - fidelity_s
+        fidelity[fidelity <= 0] = 0
+        mean_fidelity = np.mean(fidelity)
         return mean_fidelity
 
     @staticmethod

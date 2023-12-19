@@ -173,7 +173,7 @@ if __name__ == '__main__':
     args.stock_list = ['SH600018']
     args.date_list = ['2022-06-02']
     exp_result_dict, explanation = run_input_gradient_explanation(args)
-    fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.3)
+    fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.1)
     print(fidelity)
     # exp_dict = {'relative_stocks_dict': relative_stocks_dict, 'score_dict': score_dict}
     # save_path = r'.\results'
