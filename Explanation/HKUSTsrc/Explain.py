@@ -13,6 +13,7 @@ from tqdm import tqdm
 from Explanation.HKUSTsrc.Explainer import *
 from Explanation.HKUSTsrc.model import *
 from Explanation.utils.Evaluation import metric_fn
+from Model.model_pool.models.model import relation_GATs
 
 
 # from dataloader import DataLoader, create_loaders
@@ -53,10 +54,12 @@ class Explanation:
 
     def get_pred_model(self):
         with torch.no_grad():
-            if self.args.graph_model == 'RSR':
+            if self.args.graph_model == 'NRSR':
                 self.pred_model = NRSR(num_relation=self.num_relation,
                                        d_feat=self.d_feat,
                                        num_layers=self.num_layers)
+            elif self.args.graph_model == 'relation_GATs':
+                self.pred_model = relation_GATs(d_feat=self.d_feat, num_layers=self.num_layers)
 
             self.pred_model.to(self.device)
             self.pred_model.load_state_dict(torch.load(self.model_dir + '/model.bin', map_location=self.device))

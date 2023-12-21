@@ -12,12 +12,17 @@ def cal_assessment(param_dict, data_loader, model, device):
 
     preds = predict(param_dict, data_loader, model, device)
 
+    if param_dict['model_name'] == 'NRSR' or 'relation_GATs':
+        explainable = cal_explainable(param_dict, data_loader, device)
+    else:
+        explainable = 0
+
     reliability = cal_reliability(preds)
     stability = cal_stability(preds)
-    robustness = cal_robustness(preds, param_dict, data_loader, model, device)
-    transparency = cal_transparency(param_dict['model_name'])
-    explainable =  cal_explainable(param_dict, data_loader, device)
-    return reliability, stability, robustness, transparency, explainable
+    # robustness = cal_robustness(preds, param_dict, data_loader, model, device)
+    # transparency = cal_transparency(param_dict['model_name'])
+
+    return reliability, stability, explainable
 
 
 def cal_explainable(param_dict, data_loader, device, explainer='inputGradientExplainer', p=0.2):
@@ -25,7 +30,8 @@ def cal_explainable(param_dict, data_loader, device, explainer='inputGradientExp
 
     parser.add_argument('--device', default=device)
     parser.add_argument('--graph_data_path', default=param_dict['stock2stock_matrix'])
-    parser.add_argument('--model_dir', type=str, default=param_dict['stock2stock_matrix'])
+    parser.add_argument('--model_dir', type=str, default=param_dict['model_dir'])
+    parser.add_argument('--graph_model', type=str, default=param_dict['model_name'])
 
     parser.add_argument('--d_feat', type=int, default=param_dict['d_feat'])
     parser.add_argument('--num_layers', type=int, default=param_dict['num_layers'])

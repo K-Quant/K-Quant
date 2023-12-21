@@ -60,7 +60,7 @@ def parse_args():
     parser.add_argument('--least_samples_num', type=float, default=1137.0)
     parser.add_argument('--label', default='')  # specify other labels
     parser.add_argument('--start_date', default='2019-01-01')
-    parser.add_argument('--end_date', default='2019-05-31')
+    parser.add_argument('--end_date', default='2019-01-05')
 
     # input for csi 300
     parser.add_argument('--data_root', default='D:\ProjectCodes\K-Quant\Data')

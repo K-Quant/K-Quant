@@ -626,6 +626,9 @@ class relation_GATs(nn.Module):
             self.attention_weight = valid_weight
         return pred
 
+    def using_effect_explanation(self):
+        self.using_effect = True
+
 
 class relation_GATs_3heads(nn.Module):
     def __init__(self, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0, base_model="GRU"):

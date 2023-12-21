@@ -8,9 +8,8 @@ from tqdm import tqdm
 
 from Assessment.dataloader import create_data_loaders
 from Model.model_pool.utils.utils import DotDict
-from utils import get_model, add_noise
+from utils import get_model
 from metrics import cal_assessment
-
 
 time_series_library = [
     'DLinear',
@@ -62,8 +61,8 @@ def predict(param_dict, data_loader, model, device, noise=False, noise_level=0.1
     stock2stock_matrix = torch.Tensor(np.load(stock2stock_matrix)).to(device)
     for i, slc in tqdm(data_loader.iter_daily(), total=data_loader.daily_length):
         feature, label, market_value, stock_index, index = data_loader.get(slc)
-        if noise:
-            feature = add_noise(feature, noise_level, noise_seed)
+        # if noise:
+        #     feature = add_noise(feature, noise_level, noise_seed)
         with torch.no_grad():
             if param_dict['model_name'] == 'NRSR' or 'relation_GATs':
                 pred = model(feature, stock2stock_matrix[stock_index][:, stock_index])
@@ -84,6 +83,6 @@ def main(args):
     data_loader = create_data_loaders(args)
     param_dict = json.load(open(args.model_path + "/" + args.model_name + '/info.json'))['config']
     model = set_model(args, param_dict, args.device)
-    reliability, stability = cal_assessment(param_dict, data_loader, model, args.device)
-    return reliability, stability
-
+    reliability, stability, explainable = cal_assessment(param_dict, data_loader, model,
+                                                         args.device)
+    return reliability, stability, explainable
