@@ -9,6 +9,7 @@
 In recent years, domain-specific knowledge bases (KBs) have attracted more attention in academics and industry because of their expertise and in-depth representation in a specific domain. However, when constructing a domain-specific KB, one needs to address not only the challenges in constructing a general KB, but also the difficulties raised by the nature of domain-specific raw data. Considering the usability of financial Knowledge Bases (KBs) in many downstream applications, such as financial risk analysis and fraud detection, we propose a Platform for Temporal Financial KB Construction, K-Quant Platform. 
 
 If you find this system helpful in your research, please consider citing our papers that are listed below:
+
 [1] **T-FinKB: A Platform of Temporal Financial Knowledge Base Construction.**
 *Xinyi Zhu, Liping Wang, Hao Xin, Xiaohan Wang, Zhifeng Jia, Jiyao Wang, Chunming Ma, Yuxiang Zeng.* ICDE 2023. \[[paper](https://ieeexplore.ieee.org/document/10184672)\]
 
