@@ -61,6 +61,9 @@ The main features of K-Quant:
 > Xinyi Zhu, Hao Xin, Yanyan Shen, and Lei Chen. 
 HIT - An Effective Approach to Build a Dynamic Financial Knowledge Base. In Database Systems for Advanced Applications: 28th International Confer- ence, DASFAA 2023, Tianjin, China, April 17–20, 2023, Proceedings, Part II, pages 716–731. Springer, 2023. https://link.springer.com/chapter/10.1007/978-3-031-30672-3_48
 
+> Liping Wang, Jiawei Li, Lifan Zhao, Zhizhuo Kou, Xiaohan Wang, Xinyi Zhu, Hao Wang, Yanyan Shen, Lei Chen.
+Methods for Acquiring and Incorporating Knowledge into Stock Price Prediction: A Survey. https://arxiv.org/abs/2308.04947
+
 ## Related Works
 
 ## Acknowledgement
