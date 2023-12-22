@@ -11,6 +11,7 @@ In recent years, domain-specific knowledge bases (KBs) have attracted more atten
 If you find this system helpful in your research, please consider citing our papers that are listed below:
 [1] **T-FinKB: A Platform of Temporal Financial Knowledge Base Construction.**
 *Xinyi Zhu, Liping Wang, Hao Xin, Xiaohan Wang, Zhifeng Jia, Jiyao Wang, Chunming Ma, Yuxiang Zeng.* ICDE 2023. \[[paper](https://ieeexplore.ieee.org/document/10184672)\]
+
 [2] **Methods for Acquiring and Incorporating Knowledge into Stock Price Prediction: A Survey.**
 *Liping Wang, Jiawei Li, Lifan Zhao, Zhizhuo Kou, Xiaohan Wang, Xinyi Zhu, Hao Wang, Yanyan Shen, Lei Chen.* Arxiv 2023. \[[paper](https://arxiv.org/abs/2308.04947)\]
 
