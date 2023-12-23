@@ -1,3 +1,4 @@
+import torch
 from Explanation.HKUSTsrc import NRSR
 from Model.model_pool.models.model import MLP, LSTM, GRU, GAT, ALSTM, KEnhance, relation_GATs
 
@@ -28,3 +29,12 @@ def get_model(model_name):
 
     if model_name == "KEnhance":
         return KEnhance
+
+
+def add_noise(x, level, noise_seed):
+    torch.manual_seed(noise_seed)
+    mu = 0
+    sigma = level * torch.std(x)
+    noise = torch.normal(mu, sigma, size=x.shape)
+    hat_x = x + noise
+    return hat_x
