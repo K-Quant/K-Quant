@@ -102,4 +102,4 @@ class PerfomanceBasedModel(ReweightModel):
         self.trained = True
         
         w = 1 / np.mean(np.abs(y_train - x_train), axis=0, keepdims=True)
-        self.w = w / w.sum()
+        self.w = w / w.sum()# update  08:53:39

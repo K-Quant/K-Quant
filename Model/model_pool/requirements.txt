@@ -11,4 +11,4 @@ matplotlib~=3.5.1
 einops~=0.6.1
 sympy~=1.12
 
-higher==0.2.1
+higher==0.2.1# update  13:42:39

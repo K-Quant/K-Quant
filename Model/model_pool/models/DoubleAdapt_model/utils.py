@@ -424,4 +424,4 @@ def has_rnn(module: nn.Module):
     for module in module.modules():
         if isinstance(module, nn.RNNBase):
             return True
-    return False
+    return False# update  18:27:42

@@ -133,4 +133,4 @@ def prepare_data_and_model(args):
     param_dict['start_date'] = args.start_date
     param_dict['end_date'] = args.end_date
 
-    return data_loader, param_dict, model
+    return data_loader, param_dict, model# update  03:21:21

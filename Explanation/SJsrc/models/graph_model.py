@@ -133,4 +133,4 @@ class HeterographModel(nn.Module):
         h = self.forward_graph(x)
         pred = self.forward_predictor(x, h)
         self.g = origin_graph
-        return pred
+        return pred# update  06:15:05

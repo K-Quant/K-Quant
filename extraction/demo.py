@@ -13,4 +13,4 @@ if __name__ == '__main__':
                         help="The input file format, such as json.")
     args = parser.parse_args()
 
-    run_extraction(args.original_news_path, args.extracted_data_path, args.input_format)
+    run_extraction(args.original_news_path, args.extracted_data_path, args.input_format)# update  12:36:08
