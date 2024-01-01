@@ -83,6 +83,6 @@ def main(args):
     data_loader = create_data_loaders(args)
     param_dict = json.load(open(args.model_path + "/" + args.model_name + '/info.json'))['config']
     model = set_model(args, param_dict, args.device)
-    reliability, stability, explainable = cal_assessment(param_dict, data_loader, model,
+    reliability, stability, explainable, robustness, transparency = cal_assessment(param_dict, data_loader, model,
                                                          args.device)
-    return reliability, stability, explainable
+    return reliability, stability, explainable, robustness, transparency

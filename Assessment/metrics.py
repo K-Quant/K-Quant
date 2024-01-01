@@ -22,7 +22,7 @@ def cal_assessment(param_dict, data_loader, model, device):
     robustness = cal_robustness(preds, param_dict, data_loader, model, device)
     transparency = cal_transparency(param_dict['model_name'])
 
-    return reliability, stability, explainable
+    return reliability, stability, explainable, robustness, transparency
 
 
 def cal_explainable(param_dict, data_loader, device, explainer='inputGradientExplainer', p=0.2):
