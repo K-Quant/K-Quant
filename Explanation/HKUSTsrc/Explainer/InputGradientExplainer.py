@@ -23,12 +23,31 @@ class InputGradientExplainer(nn.Module):
         loss = ypred.sum()
         loss.backward()
         relation_stocks = self.model.relation_stocks
-        relation_matrix_pres = self.cal_relation_matrix_props()
+        relation_matrix_pres = self.cal_relation_matrix_pres()
 
 
         relation_edge_weight_matrix = InputGradientExplainer.cal_edge_weight(relation_stocks, relation_stocks.grad,
                                                                     relation_matrix_pres)
         return relation_edge_weight_matrix
+
+    def cal_relation_matrix_pres(self):
+        relation_matrix_grad = self.model.relation_matrix.grad * self.model.relation_matrix  # 消除没有关系的股票
+        index = torch.t((relation_matrix_grad == 0).nonzero())
+        ones = torch.ones(relation_matrix_grad.shape[0], relation_matrix_grad.shape[1], relation_matrix_grad.shape[2])
+        max_r = torch.max(relation_matrix_grad, dim=2)[0]
+        min_r = torch.min(relation_matrix_grad, dim=2)[0]
+        max_min = (max_r - min_r)
+        max_min = max_min.unsqueeze(2).repeat(1, 1, relation_matrix_grad.shape[2])
+        min_r_x = min_r.unsqueeze(2).repeat(1, 1, relation_matrix_grad.shape[2])
+        relation_matrix_grad = relation_matrix_grad - min_r_x
+        max_min[index[0], index[1], index[2]] = -100000000000000
+        result = 2 * relation_matrix_grad / max_min - ones
+        result[index[0], index[1], index[2]] = -100000000000000
+
+        softmax = torch.nn.Softmax(dim=2)
+        relation_matrix_pres = softmax(result) * self.model.relation_matrix
+        del relation_matrix_grad, max_r, min_r
+        return relation_matrix_pres
 
     def cal_relation_matrix_props(self):
         relation_matrix_grad = self.model.relation_matrix.grad * self.model.relation_matrix

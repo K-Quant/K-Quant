@@ -41,7 +41,7 @@ def cal_explainable(param_dict, data_loader, device, explainer='inputGradientExp
     args = parser.parse_known_args()[0]
     explanation = Explanation(args, data_loader, explainer_name=explainer)
     exp_result_dict = explanation.explain()
-    # check_all_relative_stock(args, exp_result_dict)
+    check_all_relative_stock(args, exp_result_dict)
     evaluation_results = evaluate_fidelity(explanation, exp_result_dict, p=p)
     fidelity = np.mean(np.array(list(evaluation_results.values())))
     return fidelity
