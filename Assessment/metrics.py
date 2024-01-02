@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 from sklearn.metrics import ndcg_score
 
-from Explanation.ExplanationInterface import evaluate_fidelity
+from Explanation.ExplanationInterface import evaluate_fidelity, check_all_relative_stock
 from Explanation.HKUSTsrc import Explanation
 
 
@@ -32,6 +32,7 @@ def cal_explainable(param_dict, data_loader, device, explainer='inputGradientExp
     parser.add_argument('--graph_data_path', default=param_dict['stock2stock_matrix'])
     parser.add_argument('--model_dir', type=str, default=param_dict['model_dir'])
     parser.add_argument('--graph_model', type=str, default=param_dict['model_name'])
+    parser.add_argument('--stock_index', type=str, default=r"D:\ProjectCodes\K-Quant\Data\csi300_stock_index.npy")
 
     parser.add_argument('--d_feat', type=int, default=param_dict['d_feat'])
     parser.add_argument('--num_layers', type=int, default=param_dict['num_layers'])
@@ -40,6 +41,7 @@ def cal_explainable(param_dict, data_loader, device, explainer='inputGradientExp
     args = parser.parse_known_args()[0]
     explanation = Explanation(args, data_loader, explainer_name=explainer)
     exp_result_dict = explanation.explain()
+    # check_all_relative_stock(args, exp_result_dict)
     evaluation_results = evaluate_fidelity(explanation, exp_result_dict, p=p)
     fidelity = np.mean(np.array(list(evaluation_results.values())))
     return fidelity

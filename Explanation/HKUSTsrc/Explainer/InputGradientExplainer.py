@@ -23,30 +23,42 @@ class InputGradientExplainer(nn.Module):
         loss = ypred.sum()
         loss.backward()
         relation_stocks = self.model.relation_stocks
-        relation_matrix_pres = self.cal_relation_matrix_pres()
+        relation_matrix_pres = self.cal_relation_matrix_props()
 
 
         relation_edge_weight_matrix = InputGradientExplainer.cal_edge_weight(relation_stocks, relation_stocks.grad,
                                                                     relation_matrix_pres)
         return relation_edge_weight_matrix
 
-    def cal_relation_matrix_pres(self):
-        relation_matrix_grad = self.model.relation_matrix.grad * self.model.relation_matrix  # 消除没有关系的股票
-        index = torch.t((relation_matrix_grad == 0).nonzero())
-        ones = torch.ones(relation_matrix_grad.shape[0], relation_matrix_grad.shape[1], relation_matrix_grad.shape[2])
-        max_r = torch.max(relation_matrix_grad, dim=2)[0]
-        min_r = torch.min(relation_matrix_grad, dim=2)[0]
-        max_min = (max_r - min_r)
-        max_min = max_min.unsqueeze(2).repeat(1, 1, relation_matrix_grad.shape[2])
-        min_r_x = min_r.unsqueeze(2).repeat(1, 1, relation_matrix_grad.shape[2])
-        relation_matrix_grad = relation_matrix_grad - min_r_x
-        max_min[index[0], index[1], index[2]] = -100000000000000
-        result = 2 * relation_matrix_grad / max_min - ones
-        result[index[0], index[1], index[2]] = -100000000000000
+    def cal_relation_matrix_props(self):
+        relation_matrix_grad = self.model.relation_matrix.grad * self.model.relation_matrix
 
+        # 找到非零元素的最大值和最小值
+        # 计算非零元素的均值和标准差
+        non_zero_mask = relation_matrix_grad != 0
+        non_zero_elements = relation_matrix_grad[non_zero_mask]
+        mean_val = non_zero_elements.mean()
+        std_val = non_zero_elements.std()
+
+        # 防止标准差为零导致的除零问题
+        if std_val == 0:
+            std_val = 1
+
+        # 对非零元素应用Z-Score归一化
+        relation_matrix_props = torch.where(
+            non_zero_mask,
+            (relation_matrix_grad - mean_val) / std_val,
+            torch.zeros_like(relation_matrix_grad)
+        )
+
+        # 将零元素替换为负无穷，以便在Softmax中变成0
+        softmax_input = torch.where(non_zero_mask, relation_matrix_props,
+                                    torch.tensor(float('-inf')).to(relation_matrix_props.device))
         softmax = torch.nn.Softmax(dim=2)
-        relation_matrix_pres = softmax(result) * self.model.relation_matrix
-        del relation_matrix_grad, max_r, min_r
+        relation_matrix_pres = softmax(softmax_input)
+        # 将原始的零元素位置恢复为0
+        relation_matrix_pres = torch.where(non_zero_mask, relation_matrix_pres, torch.zeros_like(relation_matrix_pres))
+
         return relation_matrix_pres
 
     @staticmethod

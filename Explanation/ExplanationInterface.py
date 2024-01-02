@@ -4,6 +4,10 @@ from Explanation.utils import *
 from Explanation.SJsrc import *
 from Explanation.HKUSTsrc import *
 
+relation = ['Banks—Regional', 'Capital Markets', 'Asset Management', 'Financial Conglomerates', 'Insurance—Life', 'Financial Data & Stock Exchanges', 'Banks—Diversified', 'Real Estate—Development', 'Real Estate—Diversified', 'Real Estate Services', 'Biotechnology', 'Medical Distribution', 'Drug Manufacturers—Specialty & Generic', 'Medical Care Facilities', 'Drug Manufacturers—General', 'Diagnostics & Research', 'Lodging', 'Auto & Truck Dealerships', 'Auto Parts', 'Textile Manufacturing', 'Furnishings, Fixtures & Appliances', 'Department Stores', 'Auto Manufacturers', 'Packaging & Containers', 'Apparel Manufacturing', 'Specialty Retail', 'Infrastructure Operations', 'Conglomerates', 'Engineering & Construction', 'Waste Management', 'Metal Fabrication', 'Building Products & Equipment', 'Marine Shipping', 'Airports & Air Services', 'Integrated Freight & Logistics', 'Industrial Distribution', 'Farm & Heavy Construction Machinery', 'Specialty Industrial Machinery', 'Electrical Equipment & Parts', 'Railroads', 'Business Equipment & Supplies', 'Aerospace & Defense', 'Specialty Business Services', 'Security & Protection Services', 'Airlines', 'Trucking', 'Specialty Chemicals', 'Chemicals', 'Other Industrial Metals & Mining', 'Building Materials', 'Agricultural Inputs', 'Paper & Paper Products', 'Aluminum', 'Copper', 'Steel', 'Gold', 'Consumer Electronics', 'Electronic Components', 'Computer Hardware', 'Information Technology Services', 'Communication Equipment', 'Semiconductor Equipment & Materials', 'Semiconductors', 'Software—Application', 'Software—Infrastructure', 'Packaged Foods', 'Farm Products', 'Beverages—Wineries & Distilleries', 'Beverages—Brewers', 'Utilities—Diversified', 'Utilities—Regulated Electric', 'Utilities—Renewable', 'Utilities—Regulated Gas', 'Utilities—Regulated Water', 'Utilities—Independent Power Producers', 'Internet Content & Information', 'Entertainment', 'Publishing', 'Broadcasting', 'Electronic Gaming & Multimedia', 'Advertising Agencies', 'Telecom Services', 'Oil & Gas Refining & Marketing', 'Thermal Coal', 'Oil & Gas Equipment & Services', 'Oil & Gas Integrated', 'compete', 'cooprate', 'dispute', 'fall', 'increase_holding', 'invest', 'reduce_holding', 'rise', 'same_industry', 'superior', 'supply']
+
+relation = relation + ['unknow'] * (102 - len(relation))
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -96,7 +100,42 @@ def run_input_gradient_explanation(args):
     data_loader = create_data_loaders(args)
     explanation = Explanation(args, data_loader, explainer_name=args.explainer)
     exp_result_dict = explanation.explain()
+    check_all_relative_stock(args, exp_result_dict)
     return exp_result_dict, explanation
+
+
+def check_all_relative_stock(args, exp_result_dict):
+    _stock_index = np.load(args.stock_index, allow_pickle=True).item()
+    index_to_stock_id = {index: stock_id for stock_id, index in _stock_index.items()}
+
+    relative_stocks_dict = {}
+    for date in exp_result_dict.keys():
+        exp_graph = exp_result_dict[date]['expl_graph']
+        stock_index_in_adj = exp_result_dict[date]['stock_index_in_adj']
+        relative_stocks_dict[date] = {}
+
+        num_stocks, _, num_relations = exp_graph.shape
+
+        for i in range(num_stocks):
+            stock_id = index_to_stock_id[stock_index_in_adj[i]]  # 获取股票编号
+            relative_stocks_dict[date][stock_id] = {}
+            for j in range(num_stocks):
+                other_stock_id = index_to_stock_id[stock_index_in_adj[j]]
+                scores = exp_graph[i, j, :]
+                # 计算102种关系的总score
+                total_score = scores.sum()
+
+                # 创建包含所有非零关系分数的字典
+                relative_scores = {rel_name: score for rel_name, score in zip(relation, scores) if score != 0}
+
+                # 如果存在非零分数的关系，那么将它们添加到字典中
+                if relative_scores:
+                    relative_stocks_dict[date][stock_id][other_stock_id] = {
+                        'total_score': total_score,
+                        'individual_scores': relative_scores
+                    }
+
+    return relative_stocks_dict
 
 
 def evaluate_fidelity(explanation, exp_result_dict, p=0.2):
