@@ -83,3 +83,4 @@ class Model(nn.Module):
         dec_out = self.regression(x_enc, x_mark_enc)
         return dec_out.squeeze()  # [B, N]
 
+# update 2024-01-08 09:42:05
