@@ -16,9 +16,12 @@ class xPath(GraphExplainer):
         super().__init__(graph_model, num_layers, device)
         self.sampler = dgl.dataloading.MultiLayerFullNeighborSampler(self.num_layers)
         self.one_hop_sampler = dgl.dataloading.MultiLayerFullNeighborSampler(1)
-        self.target_ntype = 's'
+        self.target_ntype = 'stock'
         self.random_seed = 2023
+        self.scale = 100
         random.seed(self.random_seed)
+        torch.manual_seed(self.random_seed)
+        dgl.seed(self.random_seed)
 
     def sample_step(self, g, ap, sample_n):
         apid = list(ap)
@@ -163,7 +166,23 @@ class xPath(GraphExplainer):
 
         sg = dgl.graph(sg_edges)
         sg.ndata['nfeat'] = x
+        sg.ndata[dgl.NID] = g.ndata[dgl.NID]
         return sg.to(self.device)
+
+    def dense2dgl(self, rel_matrix, feature, device):
+        # convert adj matrix to dgl sparse graph
+        if len(rel_matrix.shape) == 3:
+            rel_matrix = rel_matrix.sum(axis=-1)  # [N, N]
+        idx = rel_matrix.nonzero().t()
+        dgl_graph = dgl.graph((idx[0], idx[1])).to(device)
+        dgl_graph.ndata['nfeat'] = torch.Tensor(feature).to(device)
+        return dgl_graph
+
+    def dgl2dense(self, rel_matrix, g):
+        g_adj = torch.zeros(g.num_nodes(), g.num_nodes(), rel_matrix.shape[-1])
+        src, dst = g.edges()
+        g_adj[dst, src, :] = rel_matrix[g.ndata[dgl.NID][dst], g.ndata[dgl.NID][src], :]
+        return g_adj
 
     def explain(self, full_model, graph, stkid, beam=5, sample_n=10):
         dataloader = dgl.dataloading.DataLoader(graph,
@@ -177,7 +196,6 @@ class xPath(GraphExplainer):
 
         target_id = stkid
         g_c = dgl.node_subgraph(graph, neighbors)  # induce the computation graph
-
 
         origin_ids = g_c.ndata['_ID'].tolist()
         new_target_id = origin_ids.index(target_id)
@@ -219,6 +237,83 @@ class xPath(GraphExplainer):
             origin_path_key = [origin_ids[i]for i in path_key]
             xpath2s[tuple(origin_path_key)] = path2s[path_key]
         return xpath2s
+
+    def explain_dense(self, full_model, original_pred, rel_matrix, feature, stkid,
+                         beam=5, sample_n=10, get_fidelity=False, top_k=5):
+        """explain_dense is a newer function that support models trained with dense adjacency matrix"""
+        target_id = stkid
+        neighbors = rel_matrix[:, target_id, :].sum(axis=-1).nonzero().squeeze().tolist()
+        neighbors.append(target_id)
+
+        g = self.dense2dgl(rel_matrix, feature, self.device)
+        g_c = dgl.node_subgraph(g, neighbors)  # induce the computation graph
+
+        origin_ids = g_c.ndata['_ID'].tolist()
+        new_target_id = origin_ids.index(target_id)
+        # original_pred = full_model(g_c.ndata['nfeat'], self.dgl2dense(rel_matrix, g_c)).detach().cpu().numpy()[new_target_id]
+        original_pred = original_pred[stkid]
+
+        ancestor_p = [(new_target_id,)]
+        top_k_p = {(new_target_id,): -100}
+        visited = {}
+        path2s = {}
+        while len(ancestor_p) > 0:
+            for ap in ancestor_p:
+                paths = self.sample_step(g_c, ap, sample_n=sample_n)
+                for pid in range(len(paths)):
+                    p = paths[pid]
+                    path_key = tuple(p)
+                    shadow_graph = self.get_proxy_homograph(g_c, p)
+                    pred = full_model(shadow_graph.ndata['nfeat'], self.dgl2dense(rel_matrix, shadow_graph)).detach().cpu().numpy()[new_target_id]
+                    tmp = abs(original_pred * self.scale - pred * self.scale)
+                    path2s[path_key] = tmp
+                    top_k_p[path_key] = tmp
+
+            values = list(top_k_p.values())
+            keys = list(top_k_p.keys())
+            ind = np.argsort(values)[-beam:]
+            top_k_p = {keys[b]: top_k_p[keys[b]] for b in ind}
+
+            ancestor_p = []
+            for b in top_k_p:
+                if (len(b) <= self.num_layers) and (not b in visited):
+                    ancestor_p.append(b)
+                    visited[b] = 1
+
+        # normalize the score of path2s
+        scores = np.array(list(path2s.values()))
+        if np.sum(scores) == 0:
+            scores = np.ones_like(scores)
+        else:
+            scores = scores / np.sum(scores)
+        for i in range(len(scores)):
+            path2s[list(path2s.keys())[i]] = int(scores[i] * 100)
+
+        # convert to original ids in g
+        xpath2s = {}
+        for path_key in path2s:
+            origin_path_key = origin_ids[path_key[1]]
+            xpath2s[origin_path_key] = path2s[path_key]
+
+        # get top k explanations
+        if top_k >= len(xpath2s):
+            exp_nodes = list(xpath2s.keys())
+            explanation = xpath2s
+        else:
+            ind = np.argsort(list(xpath2s.values()))[:-top_k]
+            exp_nodes = [list(xpath2s.keys())[i] for i in ind]
+            explanation = {xpath2s[k]: k for k in exp_nodes}
+
+        if get_fidelity:
+            if new_target_id not in exp_nodes:
+                exp_nodes.append(new_target_id)
+            g_m = dgl.node_subgraph(g, exp_nodes)
+            target_id = g_m.ndata[dgl.NID].tolist().index(new_target_id)
+            g_m_pred = full_model(g_m.ndata['nfeat'], self.dgl2dense(rel_matrix, g_m)).detach().cpu().numpy()[target_id]
+            fidelity = abs(original_pred - g_m_pred) / self.scale
+            return explanation, fidelity
+
+        return explanation
 
     def explanation_to_graph(self, explanation, subgraph, stkid, top_k=5, maskout=False):
         keys = list(explanation.keys())

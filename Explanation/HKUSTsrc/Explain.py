@@ -3,7 +3,6 @@ import math
 import pickle
 import datetime
 import pandas as pd
-
 import random
 
 import torch
@@ -12,6 +11,7 @@ from tqdm import tqdm
 # from Config import config
 from Explanation.HKUSTsrc.Explainer import *
 from Explanation.HKUSTsrc.model import *
+from Explanation.SJsrc.interpreter import xpath
 from Explanation.utils.Evaluation import metric_fn
 from Model.model_pool.models.model import relation_GATs
 
@@ -80,6 +80,9 @@ class Explanation:
         elif self.explainer_name == 'random':
             pass
 
+        elif self.explainer_name == 'xpathExplainer':
+            self.explainer = xpath.xPath(graph_model="homograph", num_layers=1, device=self.device)
+
     def load_data(self):
         self.graph_data = torch.Tensor(np.load(self.graph_data_path)).to(self.device)
         self.num_relation = self.graph_data.shape[2]
@@ -107,11 +110,48 @@ class Explanation:
             date = datetime.datetime.date(index[0][0])
             graph = self.graph_data[stock_index][:, stock_index]
             expl_graph = self.explainer.run_explain(feature, graph)
-
             exp_result_dict[str(date)] = {'expl_graph': expl_graph.detach().numpy(),
                                           'origin_graph': graph.detach().numpy(),
                                           'feature': feature.detach().numpy(),
                                           'stock_index_in_adj': stock_index.detach().numpy()}
+        return exp_result_dict
+
+    def explain_xpath(self, stock_list=None, get_fidelity=False, top_k=5):
+        # xpathExplainer params:
+        #   stock_list->list of stock name, if None, explain all stocks
+        #   get_fidelity->bool, if True, return fidelity in the result dict
+        #  top_k->int, top k related stocks to be returned
+        # An example of exp_result_dict:
+        #  {'2019-01-02': {'SH600000': {'SH600015': 22, 'SH601166': 7, ...}}}
+        data_loader = self.data_loader
+        exp_result_dict = {}
+        fidelity_all = []
+        for i, slc in tqdm(self.data_loader.iter_daily(), total=self.data_loader.daily_length):
+            feature, label, market_value, stock_index, index = data_loader.get(slc)
+            date = datetime.datetime.date(index[0][0])
+            graph = self.graph_data[stock_index][:, stock_index]
+            if self.explainer_name == 'xpathExplainer':
+                exp_result_dict[str(date)] = {}
+                if not stock_list:
+                    stock_id_list = torch.arange(len(stock_index))
+                else:
+                    instrument_list = index.get_level_values(1).unique().tolist()
+                    stock_id_list = [instrument_list.index(x) for x in stock_list]
+                original_pred = self.pred_model(feature, graph).detach().cpu().numpy()
+                for stock_id in stock_id_list:
+                    if get_fidelity:
+                        explanation, fidelity = self.explainer.explain_dense(self.pred_model, original_pred,
+                                            graph, feature, stock_id, get_fidelity=get_fidelity, top_k=top_k)
+                        fidelity_all.append(fidelity)
+                    else:
+                        explanation = self.explainer.explain_dense(self.pred_model, original_pred,
+                                            graph, feature, stock_id, top_k=top_k)
+                    res = {}
+                    for k, v in explanation.items():
+                        res[index[k][1]] = v
+                    exp_result_dict[str(date)][index[stock_id][1]] = res
+        if get_fidelity:
+            return exp_result_dict, np.mean(fidelity_all)
         return exp_result_dict
 
     def save_explanation(self):
@@ -182,8 +222,6 @@ class Explanation:
         feature = torch.tensor(feature) if not torch.is_tensor(feature) else feature
         origin_matrix = torch.tensor(origin_matrix) if not torch.is_tensor(origin_matrix) else origin_matrix
         explanation_matrix = torch.tensor(explanation_matrix) if not torch.is_tensor(explanation_matrix) else explanation_matrix
-
-
         top_p_matrix = Explanation.select_top_pers_edge(explanation_matrix, p)
         top_p_comp_matrix = origin_matrix - top_p_matrix
         pred_top_k = self.pred_model(feature, top_p_matrix)

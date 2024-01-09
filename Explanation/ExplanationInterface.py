@@ -30,8 +30,7 @@ def parse_args():
     parser.add_argument('--num_layers', type=int, default=2)
 
     # 选择预测模型
-    parser.add_argument('--graph_model', default='RSR',
-                        choices=['RSR', 'GAT'])
+    parser.add_argument('--graph_model', default='NRSR')
 
     # 选择解释模型
     parser.add_argument('--explainer', default='inputGradientExplainer',
@@ -102,6 +101,12 @@ def run_input_gradient_explanation(args):
     exp_result_dict = explanation.explain()
     check_all_relative_stock(args, exp_result_dict)
     return exp_result_dict, explanation
+
+def run_xpath_explanation(args, get_fidelity=False):
+    data_loader = create_data_loaders(args)
+    explanation = Explanation(args, data_loader, explainer_name=args.explainer)
+    res = explanation.explain_xpath(stock_list=args.stock_list, get_fidelity=get_fidelity, top_k=5)
+    return res
 
 
 def check_all_relative_stock(args, exp_result_dict):
@@ -208,12 +213,23 @@ if __name__ == '__main__':
     args = parse_args()
     args.start_date = '2022-06-01'
     args.end_date = '2022-07-05'
-    args.explainer = 'inputGradientExplainer'
     args.stock_list = ['SH600018']
-    args.date_list = ['2022-06-02']
-    exp_result_dict, explanation = run_input_gradient_explanation(args)
-    fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
-    print(fidelity)
+    # args.date_list = ['2022-06-02']
+
+    # for inputGradient:
+    # args.explainer = 'inputGradientExplainer'
+    # exp_result_dict, explanation = run_input_gradient_explanation(args)
+    # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
+    # print(fidelity)
+
+    # for xpath:
+    args.explainer = 'xpathExplainer'
+    args.stock_list = ['SH600018']
+    exp_result_dict = run_xpath_explanation(args, get_fidelity=False)
+    print(exp_result_dict)
+    exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True)
+    print(exp_result_dict, fidelity)
+
     # exp_dict = {'relative_stocks_dict': relative_stocks_dict, 'score_dict': score_dict}
     # save_path = r'.\results'
     # with open(r'{}/{}.json'.format(save_path, args.explainer), 'w') as f:

@@ -83,6 +83,16 @@ def main(args):
     data_loader = create_data_loaders(args)
     param_dict = json.load(open(args.model_path + "/" + args.model_name + '/info.json'))['config']
     model = set_model(args, param_dict, args.device)
-    reliability, stability, explainable, robustness, transparency = cal_assessment(param_dict, data_loader, model,
-                                                         args.device)
+
+    # The param_dict is really confusing, so I add the following lines to make it work at my computer.
+    param_dict['market_value_path'] = args.market_value_path
+    param_dict['stock2stock_matrix'] = args.stock2stock_matrix
+    param_dict['stock_index'] = args.stock_index
+    param_dict['model_dir'] = args.model_dir + "/" + args.model_name
+    param_dict['data_root'] = args.data_root
+    param_dict['start_date'] = args.start_date
+    param_dict['end_date'] = args.end_date
+
+    reliability, stability, explainable, robustness, transparency = \
+        cal_assessment(param_dict, data_loader, model, args.device)
     return reliability, stability, explainable, robustness, transparency
