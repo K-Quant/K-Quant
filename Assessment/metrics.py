@@ -25,7 +25,7 @@ def cal_assessment(param_dict, data_loader, model, device):
     return reliability, stability, explainable, robustness, transparency
 
 
-def cal_explainable(param_dict, data_loader, device, explainer='inputGradientExplainer', p=0.2):
+def cal_explainable(param_dict, data_loader, device, explainer='xpathExplainer', p=0.2):
     # xpathExplainer, inputGradientExplainer
     param_dict['device'] = device
     param_dict['graph_data_path'] = param_dict['stock2stock_matrix']
