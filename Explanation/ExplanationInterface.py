@@ -4,10 +4,6 @@ from Explanation.utils import *
 from Explanation.SJsrc import *
 from Explanation.HKUSTsrc import *
 
-relation = ['Banks—Regional', 'Capital Markets', 'Asset Management', 'Financial Conglomerates', 'Insurance—Life', 'Financial Data & Stock Exchanges', 'Banks—Diversified', 'Real Estate—Development', 'Real Estate—Diversified', 'Real Estate Services', 'Biotechnology', 'Medical Distribution', 'Drug Manufacturers—Specialty & Generic', 'Medical Care Facilities', 'Drug Manufacturers—General', 'Diagnostics & Research', 'Lodging', 'Auto & Truck Dealerships', 'Auto Parts', 'Textile Manufacturing', 'Furnishings, Fixtures & Appliances', 'Department Stores', 'Auto Manufacturers', 'Packaging & Containers', 'Apparel Manufacturing', 'Specialty Retail', 'Infrastructure Operations', 'Conglomerates', 'Engineering & Construction', 'Waste Management', 'Metal Fabrication', 'Building Products & Equipment', 'Marine Shipping', 'Airports & Air Services', 'Integrated Freight & Logistics', 'Industrial Distribution', 'Farm & Heavy Construction Machinery', 'Specialty Industrial Machinery', 'Electrical Equipment & Parts', 'Railroads', 'Business Equipment & Supplies', 'Aerospace & Defense', 'Specialty Business Services', 'Security & Protection Services', 'Airlines', 'Trucking', 'Specialty Chemicals', 'Chemicals', 'Other Industrial Metals & Mining', 'Building Materials', 'Agricultural Inputs', 'Paper & Paper Products', 'Aluminum', 'Copper', 'Steel', 'Gold', 'Consumer Electronics', 'Electronic Components', 'Computer Hardware', 'Information Technology Services', 'Communication Equipment', 'Semiconductor Equipment & Materials', 'Semiconductors', 'Software—Application', 'Software—Infrastructure', 'Packaged Foods', 'Farm Products', 'Beverages—Wineries & Distilleries', 'Beverages—Brewers', 'Utilities—Diversified', 'Utilities—Regulated Electric', 'Utilities—Renewable', 'Utilities—Regulated Gas', 'Utilities—Regulated Water', 'Utilities—Independent Power Producers', 'Internet Content & Information', 'Entertainment', 'Publishing', 'Broadcasting', 'Electronic Gaming & Multimedia', 'Advertising Agencies', 'Telecom Services', 'Oil & Gas Refining & Marketing', 'Thermal Coal', 'Oil & Gas Equipment & Services', 'Oil & Gas Integrated', 'compete', 'cooprate', 'dispute', 'fall', 'increase_holding', 'invest', 'reduce_holding', 'rise', 'same_industry', 'superior', 'supply']
-
-relation = relation + ['unknow'] * (102 - len(relation))
-
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -25,6 +21,9 @@ def parse_args():
     parser.add_argument('--stock_index', type=str, default=r'../Data/csi300_stock_index.npy')
     parser.add_argument('--graph_data_path', default='../Data/csi300_multi_stock2stock_all.npy')
     parser.add_argument('--model_dir', type=str, default=r'.\pretrianedModel\csi300_NRSR_3')
+    parser.add_argument('--relation_name_list_file', type=str, default=r'..\Data\relation_name_list.json')
+
+
 
     parser.add_argument('--d_feat', type=int, default=6)
     parser.add_argument('--num_layers', type=int, default=2)
@@ -99,8 +98,9 @@ def run_input_gradient_explanation(args):
     data_loader = create_data_loaders(args)
     explanation = Explanation(args, data_loader, explainer_name=args.explainer)
     exp_result_dict = explanation.explain()
-    check_all_relative_stock(args, exp_result_dict)
+    exp_result_dict = check_all_relative_stock(args, exp_result_dict)
     return exp_result_dict, explanation
+
 
 def run_xpath_explanation(args, get_fidelity=False):
     data_loader = create_data_loaders(args)
@@ -111,6 +111,8 @@ def run_xpath_explanation(args, get_fidelity=False):
 
 def check_all_relative_stock(args, exp_result_dict):
     _stock_index = np.load(args.stock_index, allow_pickle=True).item()
+    with open(args.relation_name_list_file, 'r') as json_file:
+        _relation_name_list = json.load(json_file)
     index_to_stock_id = {index: stock_id for stock_id, index in _stock_index.items()}
 
     relative_stocks_dict = {}
@@ -131,7 +133,7 @@ def check_all_relative_stock(args, exp_result_dict):
                 total_score = scores.sum()
 
                 # 创建包含所有非零关系分数的字典
-                relative_scores = {rel_name: score for rel_name, score in zip(relation, scores) if score != 0}
+                relative_scores = {rel_name: score for rel_name, score in zip(_relation_name_list, scores) if score != 0}
 
                 # 如果存在非零分数的关系，那么将它们添加到字典中
                 if relative_scores:
@@ -212,23 +214,23 @@ def get_results(args, start_date, end_date, explainer, check_stock_list, check_d
 if __name__ == '__main__':
     args = parse_args()
     args.start_date = '2022-06-01'
-    args.end_date = '2022-07-05'
+    args.end_date = '2022-06-05'
     args.stock_list = ['SH600018']
     # args.date_list = ['2022-06-02']
 
     # for inputGradient:
-    # args.explainer = 'inputGradientExplainer'
-    # exp_result_dict, explanation = run_input_gradient_explanation(args)
+    args.explainer = 'inputGradientExplainer'
+    exp_result_dict, explanation = run_input_gradient_explanation(args)
     # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
-    # print(fidelity)
+    print(exp_result_dict)
 
     # for xpath:
     args.explainer = 'xpathExplainer'
-    args.stock_list = ['SH600018']
-    exp_result_dict = run_xpath_explanation(args, get_fidelity=False)
-    print(exp_result_dict)
-    exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True)
-    print(exp_result_dict, fidelity)
+    # args.stock_list = ['SH600018']
+    # exp_result_dict = run_xpath_explanation(args, get_fidelity=False)
+    # print(exp_result_dict)
+    # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True)
+    # print(exp_result_dict, fidelity)
 
     # exp_dict = {'relative_stocks_dict': relative_stocks_dict, 'score_dict': score_dict}
     # save_path = r'.\results'
