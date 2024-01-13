@@ -41,3 +41,4 @@ def get_full_connection_matrix(stock_concept_graph, stocks_index_dict):
     secotr_As.append(np.eye(stocks_num))
     return np.stack(secotr_As, axis=2)
 # update  02:46:19
+# update 2024-01-13 18:44:51
