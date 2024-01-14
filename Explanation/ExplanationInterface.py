@@ -102,10 +102,13 @@ def run_input_gradient_explanation(args):
     return exp_result_dict, explanation
 
 
-def run_xpath_explanation(args, get_fidelity=False):
+def run_xpath_explanation(args, get_fidelity=False, top_k=3):
     data_loader = create_data_loaders(args)
     explanation = Explanation(args, data_loader, explainer_name=args.explainer)
-    res = explanation.explain_xpath(stock_list=args.stock_list, get_fidelity=get_fidelity, top_k=5)
+    with open(args.relation_name_list_file, 'r') as json_file:
+        _relation_name_list = json.load(json_file)
+    res = explanation.explain_xpath(stock_list=args.stock_list, get_fidelity=get_fidelity,
+                                         top_k=top_k, relation_list=_relation_name_list)
     return res
 
 
@@ -219,17 +222,17 @@ if __name__ == '__main__':
     # args.date_list = ['2022-06-02']
 
     # for inputGradient:
-    args.explainer = 'inputGradientExplainer'
-    exp_result_dict, explanation = run_input_gradient_explanation(args)
+    # args.explainer = 'inputGradientExplainer'
+    # exp_result_dict, explanation = run_input_gradient_explanation(args)
     # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
-    print(exp_result_dict)
+    # print(exp_result_dict)
 
     # for xpath:
     args.explainer = 'xpathExplainer'
-    # args.stock_list = ['SH600018']
-    # exp_result_dict = run_xpath_explanation(args, get_fidelity=False)
-    # print(exp_result_dict)
-    # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True)
+    args.stock_list = ['SH600018']
+    exp_result_dict = run_xpath_explanation(args, get_fidelity=False, top_k=3)
+    print(exp_result_dict)
+    # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True, top_k=3)
     # print(exp_result_dict, fidelity)
 
     # exp_dict = {'relative_stocks_dict': relative_stocks_dict, 'score_dict': score_dict}
