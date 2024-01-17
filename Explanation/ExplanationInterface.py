@@ -99,7 +99,20 @@ def run_input_gradient_explanation(args):
     explanation = Explanation(args, data_loader, explainer_name=args.explainer)
     exp_result_dict = explanation.explain()
     exp_result_dict = check_all_relative_stock(args, exp_result_dict)
+
     return exp_result_dict, explanation
+
+
+def search_stocks_prediction_explanation(args, exp_result_dict):
+    result_subset = {}
+    for stock_id in args.stock_list:
+        result_subset[stock_id] = {}
+        for date, result_data in exp_result_dict.items():
+            # Check if date is within the specified range
+            if args.start_date <= date <= args.end_date:
+                if stock_id in result_data.keys():
+                    result_subset[stock_id][date] = result_data[stock_id]
+    return result_subset
 
 
 def run_xpath_explanation(args, get_fidelity=False, top_k=3):
@@ -129,21 +142,32 @@ def check_all_relative_stock(args, exp_result_dict):
         for i in range(num_stocks):
             stock_id = index_to_stock_id[stock_index_in_adj[i]]  # 获取股票编号
             relative_stocks_dict[date][stock_id] = {}
+            related_stocks = []
+
             for j in range(num_stocks):
                 other_stock_id = index_to_stock_id[stock_index_in_adj[j]]
                 scores = exp_graph[i, j, :]
-                # 计算102种关系的总score
                 total_score = scores.sum()
-
-                # 创建包含所有非零关系分数的字典
                 relative_scores = {rel_name: score for rel_name, score in zip(_relation_name_list, scores) if score != 0}
 
-                # 如果存在非零分数的关系，那么将它们添加到字典中
                 if relative_scores:
-                    relative_stocks_dict[date][stock_id][other_stock_id] = {
+                    related_stocks.append({
+                        'relative_stock_id': other_stock_id,
                         'total_score': total_score,
                         'individual_scores': relative_scores
-                    }
+                    })
+
+            # Sort related_stocks based on total_score
+            related_stocks.sort(key=lambda x: x['total_score'], reverse=True)
+            # Keep only the top three related stocks
+            top_three_related_stocks = related_stocks[:3]
+
+            for entry in top_three_related_stocks:
+                other_stock_id = entry['relative_stock_id']
+                relative_stocks_dict[date][stock_id][other_stock_id] = {
+                    'total_score': entry['total_score'],
+                    'individual_scores': entry['individual_scores']
+                }
 
     return relative_stocks_dict
 
@@ -222,16 +246,17 @@ if __name__ == '__main__':
     # args.date_list = ['2022-06-02']
 
     # for inputGradient:
-    # args.explainer = 'inputGradientExplainer'
-    # exp_result_dict, explanation = run_input_gradient_explanation(args)
+    args.explainer = 'inputGradientExplainer'
+    exp_result_dict, explanation = run_input_gradient_explanation(args)
+    exp_result_dict = search_stocks_prediction_explanation(args, exp_result_dict)
     # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
-    # print(exp_result_dict)
+    print(exp_result_dict)
 
     # for xpath:
-    args.explainer = 'xpathExplainer'
-    args.stock_list = ['SH600018']
-    exp_result_dict = run_xpath_explanation(args, get_fidelity=False, top_k=3)
-    print(exp_result_dict)
+    # args.explainer = 'xpathExplainer'
+    # args.stock_list = ['SH600018']
+    # exp_result_dict = run_xpath_explanation(args, get_fidelity=False, top_k=3)
+    # print(exp_result_dict)
     # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True, top_k=3)
     # print(exp_result_dict, fidelity)
 
