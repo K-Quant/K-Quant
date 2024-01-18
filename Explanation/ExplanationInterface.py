@@ -5,54 +5,79 @@ from Explanation.SJsrc import *
 from Explanation.HKUSTsrc import *
 
 
+class ParseConfigFile(argparse.Action):
+
+    def __call__(self, parser, namespace, filename, option_string=None):
+
+        if not os.path.exists(filename):
+            raise ValueError('cannot find config at `%s`'%filename)
+
+        with open(filename) as f:
+            config = json.load(f)
+            for key, value in config.items():
+                setattr(namespace, key, value)
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
 
+    # model
+    parser.add_argument('--model_name', default='NRSR')
+    parser.add_argument('--model_path', default='D:\ProjectCodes\K-Quant\parameter')
+    parser.add_argument('--num_relation', type= int, default=102)
+    parser.add_argument('--d_feat', type=int, default=6)
+    parser.add_argument('--hidden_size', type=int, default=128)
+    parser.add_argument('--num_layers', type=int, default=2)
+    parser.add_argument('--dropout', type=float, default=0.1)
+    parser.add_argument('--K', type=int, default=1)
+    parser.add_argument('--loss_type', default='')
+    parser.add_argument('--config', action=ParseConfigFile, default='')
+    # for ts lib model
+    parser.add_argument('--seq_len', type=int, default=60)
+    parser.add_argument('--moving_avg', type=int, default=21)
+    parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
+    parser.add_argument('--embed', type=str, default='timeF',
+                        help='time features encoding, options:[timeF, fixed, learned]')
+    parser.add_argument('--freq', type=str, default='b',
+                        help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
+    parser.add_argument('--distil', action='store_false',
+                        help='whether to use distilling in encoder, using this argument means not using distilling',
+                        default=False)
+    parser.add_argument('--factor', type=int, default=1, help='attn factor')
+    parser.add_argument('--n_heads', type=int, default=1, help='num of heads')
+    parser.add_argument('--d_ff', type=int, default=64, help='dimension of fcn')
+    parser.add_argument('--activation', type=str, default='gelu', help='activation')
+    parser.add_argument('--e_layers', type=int, default=8, help='num of encoder layers')
+    parser.add_argument('--top_k', type=int, default=5, help='for TimesBlock')
+    parser.add_argument('--pred_len', type=int, default=-1, help='the length of pred squence, in regression set to -1')
+    parser.add_argument('--de_norm', default=True, help='de normalize or not')
+
+    # data
+    parser.add_argument('--data_set', type=str, default='csi360')
+    parser.add_argument('--target', type=str, default='t+0')
+    parser.add_argument('--pin_memory', action='store_false', default=True)
+    parser.add_argument('--batch_size', type=int, default=-1)  # -1 indicate daily batch
+    parser.add_argument('--least_samples_num', type=float, default=1137.0)
+    parser.add_argument('--label', default='')  # specify other labels
+    parser.add_argument('--start_date', default='2019-01-01')
+    parser.add_argument('--end_date', default='2019-01-05')
+
+    # input for csi 300
+    parser.add_argument('--data_root', default='D:\ProjectCodes\K-Quant\Data')
+    parser.add_argument('--market_value_path', default= 'D:\ProjectCodes\K-Quant\Data\csi300_market_value_07to20.pkl')
+    parser.add_argument('--stock2concept_matrix', default='D:\ProjectCodes\K-Quant\Data\csi300_stock2concept.npy')
+    parser.add_argument('--stock2stock_matrix', default='D:\ProjectCodes\K-Quant\Data\csi300_multi_stock2stock_all.npy')
+    parser.add_argument('--stock_index', default='D:\ProjectCodes\K-Quant\Data\csi300_stock_index.npy')
+    parser.add_argument('--model_dir', default='D:\ProjectCodes\K-Quant\parameter')
+    parser.add_argument('--overwrite', action='store_true', default=False)
     parser.add_argument('--device', default='cpu')
 
-    # 地址
-    parser.add_argument("--data_root", type=str, default="D:\ProjectCodes\K-Quant\Data",
-                        help="graph_data root path")
-    parser.add_argument("--ckpt_root", type=str, default=r".\pretrianedModel\tmp_ckpt",
-                        help="ckpt root path")
-    parser.add_argument("--result_root", type=str, default=r".\results",
-                        help="explanation resluts root path")
-    parser.add_argument('--market_value_path', type=str, default=r'../Data/csi300_market_value_07to20.pkl')
-    parser.add_argument('--stock_index', type=str, default=r'../Data/csi300_stock_index.npy')
-    parser.add_argument('--graph_data_path', default='../Data/csi300_multi_stock2stock_all.npy')
-    parser.add_argument('--model_dir', type=str, default=r'.\pretrianedModel\csi300_NRSR_3')
-    parser.add_argument('--relation_name_list_file', type=str, default=r'..\Data\relation_name_list.json')
+    # relation
+    parser.add_argument('--relation_name_list_file', default=r'D:\ProjectCodes\K-Quant\Data\relation_name_list.json')
 
+    args = parser.parse_args()
 
-
-    parser.add_argument('--d_feat', type=int, default=6)
-    parser.add_argument('--num_layers', type=int, default=2)
-
-    # 选择预测模型
-    parser.add_argument('--graph_model', default='NRSR')
-
-    # 选择解释模型
-    parser.add_argument('--explainer', default='inputGradientExplainer',
-                        choices=['inputGradientExplainer', 'gradExplainer', 'effectExplainer', 'xpathExplainer'])
-
-    parser.add_argument("--relation_type", type=str, default="stock-stock",
-                        choices=["stock-stock", "industry", "full"], help="relation type of graph")
-
-    parser.add_argument("--market", type=str, default="A_share",
-                        choices=["A_share"], help="market name")
-
-    parser.add_argument('--start_date', type=str, default='2021-01-03')
-    parser.add_argument('--end_date', type=str, default='2021-01-05')
-    parser.add_argument('--top_k', type=float, default=3)
-    parser.add_argument('--top_p', type=float, default=0.2)
-
-    # check
-    parser.add_argument('--stock_list', type=list, default=[])
-    parser.add_argument('--date_list', type=list, default=[])
-    # parser.add_argument('--top_k', type=int, default=3)
-    args = parser.parse_known_args()[0]
     return args
-
 
 def run_explanation(args):
     if args.explainer == 'xpathExplainer':
@@ -93,10 +118,23 @@ def run_explanation(args):
 
 
 def run_input_gradient_explanation(args):
+    param_dict = json.load(open(args.model_path + "/" + args.model_name + '/info.json'))['config']
+    # The param_dict is really confusing, so I add the following lines to make it work at my computer.
+    param_dict['market_value_path'] = args.market_value_path
+    param_dict['stock2stock_matrix'] = args.stock2stock_matrix
+    param_dict['stock_index'] = args.stock_index
+    param_dict['model_dir'] = args.model_dir + "/" + args.model_name
+    param_dict['data_root'] = args.data_root
+    param_dict['start_date'] = args.start_date
+    param_dict['end_date'] = args.end_date
+    param_dict['device'] = device
+    param_dict['graph_data_path'] = param_dict['stock2stock_matrix']
+    param_dict['graph_model'] = param_dict['model_name']
+    param_args = argparse.Namespace(**param_dict)
     if not args.explainer == 'inputGradientExplainer':
         return None
     data_loader = create_data_loaders(args)
-    explanation = Explanation(args, data_loader, explainer_name=args.explainer)
+    explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
     exp_result_dict = explanation.explain()
     exp_result_dict = check_all_relative_stock(args, exp_result_dict)
 
@@ -242,7 +280,8 @@ if __name__ == '__main__':
     args = parse_args()
     args.start_date = '2022-06-01'
     args.end_date = '2022-06-05'
-    args.stock_list = ['SH600018']
+    args.stock_list = ['SH600000']
+    args.graph_model = 'relation_GATs'
     # args.date_list = ['2022-06-02']
 
     # for inputGradient:
