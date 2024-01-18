@@ -347,7 +347,7 @@ class Assessment(object):
 
         # ---------------------- 市场表现：同类股票 ----------------------#
 
-        calender = [60, 90, 120, 180, 252]  # 可以自定义设置：近半个月、一个月、两个月、三个月、六个月、一年
+        calender = [1, 5, 10,30, 60, 90, 120, 180, 252]  # 可以自定义设置：近半个月、一个月、两个月、三个月、六个月、一年
         # temp = pro.daily(ts_code = [*self.select_dic.keys()][0], start_date = self.start_date, end_date = self.end_date_p)
         # 可以检验的近n天数
         pre_test = [i for i in calender if i <= len(self.df_price)]
@@ -807,5 +807,23 @@ class Get_Score(object):
                        Astock, hs300_list, csi500_list, \
                        df_price[con], df_pctchg[con], df_price_base, df_pctchg_base)
         performance_assessment_results_dict = A.cal_performance_assessment(df_price_base, df_pctchg_base)
+        normalized_results = min_max_normalize(performance_assessment_results_dict)
+        return normalized_results
 
-        return performance_assessment_results_dict
+
+def min_max_normalize(scores_dict):
+    # 获取最大和最小得分
+    max_score = max(scores_dict.values())
+    min_score = min(scores_dict.values())
+
+    if min_score == max_score == 0:
+        return scores_dict
+
+    else:
+
+        # 最大最小归一化
+        normalized_scores = {key: (value - min_score) / (max_score - min_score) for key, value in scores_dict.items()}
+
+        return normalized_scores
+
+

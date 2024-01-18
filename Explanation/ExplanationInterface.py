@@ -281,7 +281,7 @@ if __name__ == '__main__':
     args.start_date = '2022-06-01'
     args.end_date = '2022-06-05'
     args.stock_list = ['SH600000']
-    args.graph_model = 'relation_GATs'
+    args.model_name = 'relation_GATs'
     # args.date_list = ['2022-06-02']
 
     # for inputGradient:

@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 from Assessment.dataloader import create_data_loaders
 from Model.model_pool.utils.utils import DotDict
-from utils import get_model, add_noise
+from utils import get_model, add_noise, transform_stock_code
 from metrics import cal_assessment
 
 time_series_library = [
@@ -79,6 +79,18 @@ def predict(param_dict, data_loader, model, device, noise=False, noise_level=0.1
     return preds
 
 
+def get_stocks_recommendation(preds, top_n):
+    avg_scores = preds.groupby(level=1)['score'].mean()
+
+    # 按照平均得分从高到低排序
+    sorted_avg_scores = avg_scores.sort_values(ascending=False)
+
+    # 获取前n支股票的建议
+    top_n_recommendation = [transform_stock_code(stock) for stock in sorted_avg_scores.head(top_n).index.tolist()]
+
+    return top_n_recommendation
+
+
 def main(args):
     data_loader = create_data_loaders(args)
     param_dict = json.load(open(args.model_path + "/" + args.model_name + '/info.json'))['config']
@@ -96,3 +108,28 @@ def main(args):
     reliability, stability, explainable, robustness, transparency = \
         cal_assessment(param_dict, data_loader, model, args.device)
     return reliability, stability, explainable, robustness, transparency
+
+
+def test_get_stocks_recommendation(param_dict, data_loader, model, top_n=3):
+
+    preds = predict(param_dict, data_loader, model, "cpu")
+
+    top_n_recommendation = get_stocks_recommendation(preds, top_n=top_n)
+    return top_n_recommendation
+
+
+def prepare_data_and_model(args):
+    data_loader = create_data_loaders(args)
+    param_dict = json.load(open(args.model_path + "/" + args.model_name + '/info.json'))['config']
+    model = set_model(args, param_dict, args.device)
+
+    # The param_dict is really confusing, so I add the following lines to make it work at my computer.
+    param_dict['market_value_path'] = args.market_value_path
+    param_dict['stock2stock_matrix'] = args.stock2stock_matrix
+    param_dict['stock_index'] = args.stock_index
+    param_dict['model_dir'] = args.model_dir + "/" + args.model_name
+    param_dict['data_root'] = args.data_root
+    param_dict['start_date'] = args.start_date
+    param_dict['end_date'] = args.end_date
+
+    return data_loader, param_dict, model
