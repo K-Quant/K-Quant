@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
             c_a_r_list.append((h_p_dict, credibility_assessment_results_dict))
 
-    n_c_a_r_list = normalize_assessment_results_list(c_a_r_list)
+    n_c_a_r_list = normalize_assessment_results_list(c_a_r_list, num_selection = 5)
 
     print(n_c_a_r_list)
 
@@ -91,7 +91,7 @@ if __name__ == '__main__':
         print(performance_assessment_results_dict)
         p_a_r_list.append((h_p_dict, performance_assessment_results_dict))
 
-    n_p_a_r_list = normalize_assessment_results_list(p_a_r_list)
+    n_p_a_r_list = normalize_assessment_results_list(p_a_r_list, num_selection=5)
     print(n_p_a_r_list)
 
 
