@@ -64,7 +64,8 @@ def predict(param_dict, data_loader, model, device, noise=False, noise_level=0.1
         if noise:
             feature = add_noise(feature, noise_level, noise_seed)
         with torch.no_grad():
-            if param_dict['model_name'] == 'NRSR' or 'relation_GATs':
+            a = param_dict['model_name']
+            if param_dict['model_name'] == 'NRSR' or param_dict['model_name'] =='relation_GATs':
                 pred = model(feature, stock2stock_matrix[stock_index][:, stock_index])
             elif param_dict['model_name'] in time_series_library:
                 pred = model(feature, mask)

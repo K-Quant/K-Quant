@@ -807,8 +807,7 @@ class Get_Score(object):
                        Astock, hs300_list, csi500_list, \
                        df_price[con], df_pctchg[con], df_price_base, df_pctchg_base)
         performance_assessment_results_dict = A.cal_performance_assessment(df_price_base, df_pctchg_base)
-        normalized_results = min_max_normalize(performance_assessment_results_dict)
-        return normalized_results
+        return performance_assessment_results_dict
 
 
 def min_max_normalize(scores_dict):

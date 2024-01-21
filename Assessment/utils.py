@@ -1,8 +1,10 @@
 import argparse
 import json
+import os
 
+import numpy as np
 import torch
-
+from sklearn.preprocessing import MinMaxScaler
 
 from Explanation.HKUSTsrc import NRSR
 from Model.model_pool.models.model import MLP, LSTM, GRU, GAT, ALSTM, KEnhance, relation_GATs
@@ -61,6 +63,41 @@ def transform_stock_code(stock_code):
     return transformed_code
 
 
+def normalize_results_list(results_list):
+    # 转换为NumPy数组
+    metrics_array = np.array(results_list)
+
+    # 使用MinMaxScaler进行归一化
+    scaler = MinMaxScaler()
+    normalized_metrics = scaler.fit_transform(metrics_array)
+
+    return normalized_metrics.tolist()
+
+
+def normalize_assessment_results_list(assessment_results_list, num_selection = 5):
+    if len(assessment_results_list) < num_selection:
+        print(r"您做的选择数量需要大于{}种".format(str(num_selection)))
+        return None
+    else:
+        # 提取所有的 evaluation_metrics_dict
+        all_metrics = [result[1] for result in assessment_results_list]
+
+        # 获取所有可能的得分项
+        metric_names = list(all_metrics[0].keys())
+
+        # 提取每个得分项的分数
+        metrics_list_of_lists = [[metrics[metric] for metric in metric_names] for metrics in all_metrics]
+
+        # 使用泛化的归一化函数
+        normalized_metrics = normalize_results_list(metrics_list_of_lists)
+
+        # 将归一化后的值更新回原列表
+        for i, result in enumerate(assessment_results_list):
+            for j, metric_name in enumerate(metric_names):
+                result[1][metric_name] = normalized_metrics[i][j]
+
+        return assessment_results_list
+
 
 class ParseConfigFile(argparse.Action):
 
@@ -73,6 +110,7 @@ class ParseConfigFile(argparse.Action):
             config = json.load(f)
             for key, value in config.items():
                 setattr(namespace, key, value)
+
 
 
 def parse_args():

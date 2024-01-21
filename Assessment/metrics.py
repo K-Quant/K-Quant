@@ -12,7 +12,7 @@ def cal_assessment(param_dict, data_loader, model, explanation_model, device):
 
     preds = predict(param_dict, data_loader, model, device)
 
-    if param_dict['model_name'] == 'NRSR' or 'relation_GATs':
+    if param_dict['model_name'] == 'NRSR' or param_dict['model_name']== 'relation_GATs':
         explainable = cal_explainable(param_dict, data_loader, device, explanation_model=explanation_model)
     else:
         explainable = 0
@@ -46,7 +46,6 @@ def cal_explainable(param_dict, data_loader, device, explanation_model='xpathExp
 
 def cal_reliability(preds):
     preds = preds[~np.isnan(preds['label'])]
-    rank_ic
     rank_ic_mean = preds.groupby(level='datetime').apply(lambda x: x.label.corr(x.score, method='spearman')).mean()
 
     return rank_ic_mean
