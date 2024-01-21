@@ -15,37 +15,37 @@ if __name__ == '__main__':
 
     args.seq_len = 60
     c_a_r_list = []
-    # for seq_len in seq_len_list:
-    #     for model in model_list:
-    #         h_p_dict = {
-    #             "prediction_model": model,
-    #             "explanation_model": explanation_model,
-    #             "start_date": args.start_date,
-    #             "end_date": args.end_date,
-    #             "seq_len": seq_len
-    #         }
-    #         args.model_name = model
-    #         args.seq_len = seq_len
-    #
-    #         data_loader, param_dict, model = prepare_data_and_model(args)
-    #         credibility_assessment_results_dict = run_credibility_assessment(param_dict, data_loader, model,
-    #                                                                          explanation_model)
-    #
-    #         c_a_r_list.append((h_p_dict, credibility_assessment_results_dict))
-    #
-    # n_c_a_r_list = normalize_assessment_results_list(c_a_r_list)
-    #
-    # print(n_c_a_r_list)
+    for seq_len in seq_len_list:
+        for model in model_list:
+            h_p_dict = {
+                "prediction_model": model,
+                "explanation_model": explanation_model,
+                "start_date": args.start_date,
+                "end_date": args.end_date,
+                "seq_len": seq_len
+            }
+            args.model_name = model
+            args.seq_len = seq_len
 
-    # args.model_name = "NRSR"
-    # # explanation_model = "inputGradientExplainer"
-    # args.seq_len = 60
-    # args.num_recommendation_stocks = 3
-    # data_loader, param_dict, model = prepare_data_and_model(args)
-    # recommend_stocks_list = test_get_stocks_recommendation(param_dict, data_loader, model,
-    #                                                        top_n=args.num_recommendation_stocks)  # 输出的是推荐的股票
-    #
-    # print(recommend_stocks_list)
+            data_loader, param_dict, model = prepare_data_and_model(args)
+            credibility_assessment_results_dict = run_credibility_assessment(param_dict, data_loader, model,
+                                                                             explanation_model)
+
+            c_a_r_list.append((h_p_dict, credibility_assessment_results_dict))
+
+    n_c_a_r_list = normalize_assessment_results_list(c_a_r_list)
+
+    print(n_c_a_r_list)
+
+    args.model_name = "NRSR"
+    explanation_model = "inputGradientExplainer"
+    args.seq_len = 60
+    args.num_recommendation_stocks = 3
+    data_loader, param_dict, model = prepare_data_and_model(args)
+    recommend_stocks_list = test_get_stocks_recommendation(param_dict, data_loader, model,
+                                                           top_n=args.num_recommendation_stocks)  # 输出的是推荐的股票
+
+    print(recommend_stocks_list)
 
     select_dict_list = [
         {
