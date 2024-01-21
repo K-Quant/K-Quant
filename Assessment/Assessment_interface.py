@@ -1,3 +1,4 @@
+from Assessment.Credibility_assessment import run_credibility_assessment
 from Assessment.Performance_assessment import run_performance_assessment
 from Assessment.run_assessment import prepare_data_and_model, test_get_stocks_recommendation
 from Assessment.utils import parse_args
@@ -6,7 +7,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     args.start_date = '2019-06-01'
-    args.end_date = '2019-12-31'
+    args.end_date = '2019-06-30'
     args.model_name = "NRSR"
     args.seq_len = 60
     args.num_recommendation_stocks = 1
@@ -25,11 +26,19 @@ if __name__ == '__main__':
     args.return_preference = 1 # 输入回报偏好
     args.risk_preference = 70 # 输入风险偏好
     select_dic = { # 用户自定义输入购入量
-        '600053.SH': 1
+        '002010.SZ': 1
     }
     performance_assessment_results_dict = run_performance_assessment(args, select_dic) # 输出性能得分
-
     print(performance_assessment_results_dict)
+
+    explanation_model = "inputGradientExplainer"
+
+    credibility_assessment_results_dict = run_credibility_assessment(param_dict, data_loader, model, explanation_model)
+
+    print(credibility_assessment_results_dict)
+
+
+
 
 
 

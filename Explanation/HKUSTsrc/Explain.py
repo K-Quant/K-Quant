@@ -246,22 +246,32 @@ class Explanation:
 
     @staticmethod
     # matrix 的维度为3
+
     def select_top_pers_edge(matrix, p):
+        # 将第三个维度加起来，得到一个二维矩阵
+        n_matrix = torch.sum(matrix, dim=2)
+
+        # 将输入矩阵中有值的地方全部换成1
+        binary_matrix = torch.where(matrix > 0, torch.tensor(1.0), torch.tensor(0.0))
+
         # 找出所有非零边的索引
-        non_zero_indices = torch.nonzero(matrix)
+        non_zero_indices = torch.nonzero(n_matrix)
         # 获得非零边的权重，并在找出前20%的边
-        non_zero_weights = matrix[
-            non_zero_indices[:, 0], non_zero_indices[:, 1], non_zero_indices[:, 2]]
+        non_zero_weights = n_matrix[non_zero_indices[:, 0], non_zero_indices[:, 1]]
         k = int(non_zero_weights.numel() * p)
         topk_values, tops_indices = torch.topk(non_zero_weights, k)
 
         # 创建全零张量
-        top_pers_edges = torch.zeros_like(matrix)
+        top_pers_edges = torch.zeros_like(n_matrix)
 
-        # 将对应的位置换成1
-        top_pers_edges[non_zero_indices[tops_indices, 0], non_zero_indices[tops_indices, 1],
-        non_zero_indices[tops_indices, 2]] = 1
-        return top_pers_edges
+        # 将对应的位置扩充并填充1
+        top_pers_edges[non_zero_indices[tops_indices, 0], non_zero_indices[tops_indices, 1]] = 1
+
+        # 重建原来的三维矩阵，将三维矩阵对应为0的位置全部换成0
+        top_pers_edges_expanded = top_pers_edges.unsqueeze(2).expand_as(matrix)
+        result_matrix = binary_matrix * top_pers_edges_expanded
+
+        return result_matrix
 
     @staticmethod
     def select_top_k_related_stock(relative_stocks_dict, k=3):

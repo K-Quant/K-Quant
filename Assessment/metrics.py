@@ -7,13 +7,13 @@ from Explanation.ExplanationInterface import evaluate_fidelity, check_all_relati
 from Explanation.HKUSTsrc import Explanation
 
 
-def cal_assessment(param_dict, data_loader, model, device):
+def cal_assessment(param_dict, data_loader, model, explanation_model, device):
     from run_assessment import predict
 
     preds = predict(param_dict, data_loader, model, device)
 
     if param_dict['model_name'] == 'NRSR' or 'relation_GATs':
-        explainable = cal_explainable(param_dict, data_loader, device)
+        explainable = cal_explainable(param_dict, data_loader, device, explanation_model=explanation_model)
     else:
         explainable = 0
 
@@ -25,16 +25,16 @@ def cal_assessment(param_dict, data_loader, model, device):
     return reliability, stability, explainable, robustness, transparency
 
 
-def cal_explainable(param_dict, data_loader, device, explainer='xpathExplainer', p=0.2):
+def cal_explainable(param_dict, data_loader, device, explanation_model='xpathExplainer', p=0.2):
     # xpathExplainer, inputGradientExplainer
     param_dict['device'] = device
     param_dict['graph_data_path'] = param_dict['stock2stock_matrix']
     param_dict['graph_model'] = param_dict['model_name']
     param_args = argparse.Namespace(**param_dict)
 
-    explanation = Explanation(param_args, data_loader, explainer_name=explainer)
+    explanation = Explanation(param_args, data_loader, explainer_name=explanation_model)
 
-    if explainer == 'xpathExplainer':
+    if explanation_model == 'xpathExplainer':
         _, fidelity = explanation.explain_xpath(get_fidelity=True, top_k=5)
     else:
         exp_result_dict = explanation.explain()
@@ -46,6 +46,7 @@ def cal_explainable(param_dict, data_loader, device, explainer='xpathExplainer',
 
 def cal_reliability(preds):
     preds = preds[~np.isnan(preds['label'])]
+    rank_ic
     rank_ic_mean = preds.groupby(level='datetime').apply(lambda x: x.label.corr(x.score, method='spearman')).mean()
 
     return rank_ic_mean
