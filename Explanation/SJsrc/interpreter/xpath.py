@@ -246,6 +246,8 @@ class xPath(GraphExplainer):
         """explain_dense is a newer function that support models trained with dense adjacency matrix"""
         target_id = stock_id
         neighbors = rel_matrix[:, target_id, :].sum(axis=-1).nonzero().squeeze().tolist()
+        if type(neighbors) == int:
+            neighbors = [neighbors]
         neighbors.append(target_id)
 
         # g = self.dense2dgl(rel_matrix, feature, self.device)
