@@ -133,35 +133,46 @@ class Explanation:
             date = datetime.datetime.date(index[0][0])
             graph = self.graph_data[stock_index][:, stock_index]
             dgl_graph = self.explainer.dense2dgl(graph, feature, self.explainer.device)
-            if self.explainer_name == 'xpathExplainer':
-                exp_result_dict[str(date)] = {}
-                if not stock_list:
-                    stock_id_list = torch.arange(len(stock_index))
-                else:
-                    stock_codes = index.get_level_values(1).unique().tolist()
-                    stock_id_list = [stock_codes.index(x) for x in stock_list]
-                original_pred = self.pred_model(feature, graph).detach().cpu().numpy()
-                for stock_id in stock_id_list:
-                    if get_fidelity:
-                        explanation, fidelity = \
-                            self.explainer.explain_dense(self.pred_model, original_pred, dgl_graph, graph,
-                                                              stock_id, get_fidelity=get_fidelity, top_k=top_k)
-                        fidelity_all.append(fidelity)
+            exp_result_dict[str(date)] = {}
+            # for exception handling
+            exception_stocks = []
+            if not stock_list:
+                stock_id_list = torch.arange(len(stock_index))
+            else:
+                stock_codes = index.get_level_values(1).unique().tolist()
+                stock_id_list = []
+                for stock in stock_list:
+                    if stock in stock_codes:
+                        stock_id_list.append(stock_codes.index(stock))
                     else:
-                        explanation = \
-                            self.explainer.explain_dense(self.pred_model, original_pred, dgl_graph, graph,
-                                                              stock_id, top_k=top_k)
-                    res = {}
-                    for k, v in explanation.items():
-                        k_stock = index[k][1]
-                        res[k_stock] = {}
-                        res[k_stock]['score'] = v
-                        if relation_list:
-                            stock_relations = graph[stock_id, k, :].nonzero().squeeze().tolist()
-                            res[k_stock]['relations'] = np.array(relation_list)[stock_relations].tolist()
-                            if type(res[k_stock]['relations']) == str:
-                                res[k_stock]['relations'] = [res[k_stock]['relations']]
-                    exp_result_dict[str(date)][index[stock_id][1]] = res
+                        exception_stocks.append(stock)
+            original_pred = self.pred_model(feature, graph).detach().cpu().numpy()
+            for stock_id in stock_id_list:
+                if get_fidelity:
+                    explanation, fidelity = \
+                        self.explainer.explain_dense(self.pred_model, original_pred, dgl_graph, graph,
+                                                          stock_id, get_fidelity=get_fidelity, top_k=top_k)
+                    fidelity_all.append(fidelity)
+                else:
+                    explanation = \
+                        self.explainer.explain_dense(self.pred_model, original_pred, dgl_graph, graph,
+                                                          stock_id, top_k=top_k)
+                res = {}
+                for k, v in explanation.items():
+                    k_stock = index[k][1]
+                    res[k_stock] = {}
+                    res[k_stock]['score'] = v
+                    if relation_list:
+                        stock_relations = graph[stock_id, k, :].nonzero().squeeze().tolist()
+                        res[k_stock]['relations'] = np.array(relation_list)[stock_relations].tolist()
+                        if type(res[k_stock]['relations']) == str:
+                            res[k_stock]['relations'] = [res[k_stock]['relations']]
+                exp_result_dict[str(date)][index[stock_id][1]] = res
+            if len(exception_stocks) > 0:
+                # print('Exception Stocks: {}'.format(exception_stocks))
+                for stock in exception_stocks:
+                    exp_result_dict[str(date)][stock] = {}
+
         if get_fidelity:
             return exp_result_dict, np.mean(fidelity_all)
         return exp_result_dict
