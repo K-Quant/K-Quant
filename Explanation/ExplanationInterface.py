@@ -154,8 +154,22 @@ def search_stocks_prediction_explanation(args, exp_result_dict):
 
 
 def run_xpath_explanation(args, get_fidelity=False, top_k=3):
+    param_dict = json.load(open(args.model_path + "/" + args.model_name + '/info.json'))['config']
+    # The param_dict is really confusing, so I add the following lines to make it work at my computer.
+    param_dict['market_value_path'] = args.market_value_path
+    param_dict['stock2stock_matrix'] = args.stock2stock_matrix
+    param_dict['stock_index'] = args.stock_index
+    param_dict['model_dir'] = args.model_dir + "/" + args.model_name
+    param_dict['data_root'] = args.data_root
+    param_dict['start_date'] = args.start_date
+    param_dict['end_date'] = args.end_date
+    param_dict['device'] = device
+    param_dict['graph_data_path'] = param_dict['stock2stock_matrix']
+    param_dict['graph_model'] = param_dict['model_name']
+    param_args = argparse.Namespace(**param_dict)
+
     data_loader = create_data_loaders(args)
-    explanation = Explanation(args, data_loader, explainer_name=args.explainer)
+    explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
     with open(args.relation_name_list_file, 'r') as json_file:
         _relation_name_list = json.load(json_file)
     res = explanation.explain_xpath(stock_list=args.stock_list, get_fidelity=get_fidelity,
@@ -292,10 +306,9 @@ if __name__ == '__main__':
     print(exp_result_dict)
 
     # for xpath:
-    # args.explainer = 'xpathExplainer'
-    # args.stock_list = ['SH600018']
-    # exp_result_dict = run_xpath_explanation(args, get_fidelity=False, top_k=3)
-    # print(exp_result_dict)
+    args.explainer = 'xpathExplainer'
+    exp_result_dict = run_xpath_explanation(args, get_fidelity=False, top_k=3)
+    print(exp_result_dict)
     # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True, top_k=3)
     # print(exp_result_dict, fidelity)
 
