@@ -126,3 +126,4 @@ HIT - An Effective Approach to Build a Dynamic Financial Knowledge Base. In Data
 Methods for Acquiring and Incorporating Knowledge into Stock Price Prediction: A Survey. https://arxiv.org/abs/2308.04947
 
 
+# update 2024-01-24 06:03:34
