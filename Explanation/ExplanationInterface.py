@@ -293,17 +293,17 @@ def get_results(args, start_date, end_date, explainer, check_stock_list, check_d
 if __name__ == '__main__':
     args = parse_args()
     args.start_date = '2022-06-01'
-    args.end_date = '2022-06-05'
-    args.stock_list = ['SH600000']
-    args.model_name = 'relation_GATs'
+    args.end_date = '2022-06-01'
+    args.stock_list = ['SH600048']
+    args.model_name = 'NRSR'
     # args.date_list = ['2022-06-02']
 
     # for inputGradient:
-    args.explainer = 'inputGradientExplainer'
-    exp_result_dict, explanation = run_input_gradient_explanation(args)
-    exp_result_dict = search_stocks_prediction_explanation(args, exp_result_dict)
-    # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
-    print(exp_result_dict)
+    # args.explainer = 'inputGradientExplainer'
+    # exp_result_dict, explanation = run_input_gradient_explanation(args)
+    # exp_result_dict = search_stocks_prediction_explanation(args, exp_result_dict)
+    # # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
+    # print(exp_result_dict)
 
     # for xpath:
     args.explainer = 'xpathExplainer'
@@ -311,6 +311,13 @@ if __name__ == '__main__':
     print(exp_result_dict)
     # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True, top_k=3)
     # print(exp_result_dict, fidelity)
+
+    # print stock names
+    import pickle
+    stock_2_name = pickle.load(open(r'../Data/company_full_name.pkl', 'rb'))
+    for date in exp_result_dict.keys():
+        stock_names = [stock_2_name[stock] for stock in exp_result_dict[date][args.stock_list[0]].keys()]
+        print(f'{date} {stock_2_name[args.stock_list[0]]}: {stock_names}')
 
     # exp_dict = {'relative_stocks_dict': relative_stocks_dict, 'score_dict': score_dict}
     # save_path = r'.\results'

@@ -14,13 +14,13 @@ class xPath(GraphExplainer):
     '''
     This implementation treats a path as a sequence of nodes since there can be multiple paths between a pair of nodes.
     '''
-    def __init__(self, graph_model, num_layers, device):
+    def __init__(self, graph_model='homograph', num_layers=1, device='cpu'):
         super().__init__(graph_model, num_layers, device)
         self.sampler = dgl.dataloading.MultiLayerFullNeighborSampler(self.num_layers)
         self.one_hop_sampler = dgl.dataloading.MultiLayerFullNeighborSampler(1)
         self.target_ntype = 'stock'
         self.random_seed = 2023
-        self.scale = 100
+        self.scale = 10000
         random.seed(self.random_seed)
         torch.manual_seed(self.random_seed)
         dgl.seed(self.random_seed)
@@ -36,7 +36,9 @@ class xPath(GraphExplainer):
             break
         res = neighbors.detach().cpu().tolist()
         #print('num of neighbors:', len(res))
-        if len(res) > sample_n:
+        if sample_n == -1:
+            pass
+        elif len(res) > sample_n:
             res = random.sample(res, sample_n)
         for aid in apid:
             if aid in res:
@@ -164,25 +166,27 @@ class xPath(GraphExplainer):
             #print(f'adding {new_edges[etp][0]}->{new_edges[etp][1]}')
         # sg_edges[0] += new_edges[0]
         # sg_edges[1] += new_edges[1]
-        sg_edges = (sg_edges[0], sg_edges[1])
-
-        sg = dgl.graph(sg_edges)
-        sg.ndata['nfeat'] = x
-        sg.ndata[dgl.NID] = g.ndata[dgl.NID]
+        # sg_edges = (sg_edges[0], sg_edges[1])
+        #
+        # sg = dgl.graph(sg_edges)
+        # sg.ndata['nfeat'] = x
+        # sg.ndata[dgl.NID] = g.ndata[dgl.NID]
+        sg = dgl.remove_nodes(g, sg_edges[0][del_id])
+        # sg = dgl.remove_edges(g, del_id)
         return sg.to(self.device)
 
     def dense2dgl(self, rel_matrix, feature, device):
         # convert adj matrix to dgl sparse graph
         if len(rel_matrix.shape) == 3:
             rel_matrix = rel_matrix.sum(axis=-1)  # [N, N]
-        idx = rel_matrix.nonzero().t()
+        idx = rel_matrix.nonzero(as_tuple=True)
         dgl_graph = dgl.graph((idx[0], idx[1])).to(device)
         dgl_graph.ndata['nfeat'] = torch.Tensor(feature).to(device)
         return dgl_graph
 
     def dgl2dense(self, rel_matrix, g):
         g_adj = torch.zeros(g.num_nodes(), g.num_nodes(), rel_matrix.shape[-1])
-        dst, src = g.edges()
+        src, dst = g.edges()
         g_nids = g.ndata[dgl.NID]
         g_adj[src, dst, :] = rel_matrix[g_nids[src], g_nids[dst], :]
         return g_adj
@@ -242,11 +246,13 @@ class xPath(GraphExplainer):
         return xpath2s
 
     def explain_dense(self, full_model, original_pred, g, rel_matrix, stock_id,
-                      beam=5, sample_n=10, get_fidelity=False, top_k=5):
+                      beam=5, sample_n=-1, get_fidelity=False, top_k=5):
         """explain_dense is a newer function that support models trained with dense adjacency matrix"""
         target_id = stock_id
         neighbors = rel_matrix[:, target_id, :].sum(axis=-1).nonzero().squeeze().tolist()
-        neighbors.append(target_id)
+        if type(neighbors) == int:
+            neighbors = [neighbors]
+        neighbors.insert(0, target_id)
 
         # g = self.dense2dgl(rel_matrix, feature, self.device)
         g_c = dgl.node_subgraph(g, neighbors)  # induce the computation graph
@@ -267,8 +273,8 @@ class xPath(GraphExplainer):
                     p = paths[pid]
                     path_key = tuple(p)
                     shadow_graph = self.get_proxy_homograph(g_c, p)
-                    pred = full_model(shadow_graph.ndata['nfeat'], self.dgl2dense(rel_matrix, shadow_graph)).detach().cpu().numpy()[new_target_id]
-                    tmp = abs(original_pred * self.scale - pred * self.scale)
+                    pred = full_model(shadow_graph.ndata['nfeat'], self.dgl2dense(rel_matrix, shadow_graph)).detach().cpu().numpy()
+                    tmp = abs(original_pred * self.scale - pred[new_target_id] * self.scale)
                     path2s[path_key] = tmp
                     top_k_p[path_key] = tmp
 
@@ -283,15 +289,6 @@ class xPath(GraphExplainer):
                     ancestor_p.append(b)
                     visited[b] = 1
 
-        # normalize the score of path2s
-        scores = np.array(list(path2s.values()))
-        if np.sum(scores) == 0:
-            scores = np.ones_like(scores)
-        else:
-            scores = scores / np.sum(scores)
-        for i in range(len(scores)):
-            path2s[list(path2s.keys())[i]] = int(scores[i] * 100) / 100
-
         # convert to original ids in g
         xpath2s = {}
         for path_key in path2s:
@@ -305,8 +302,18 @@ class xPath(GraphExplainer):
             explanation = xpath2s
         else:
             ind = np.argsort(list(xpath2s.values()))[-top_k:]
+            ind = np.flipud(ind)
             exp_nodes = [xpath_nodes[i] for i in ind]
             explanation = {k: xpath2s[k] for k in exp_nodes}
+
+        # normalize the score of explanations
+        scores = np.array(list(explanation.values()))
+        if np.sum(scores) == 0:
+            scores = np.ones_like(scores)
+        else:
+            scores = scores / np.sum(scores)
+        for i in range(len(scores)):
+            explanation[list(explanation.keys())[i]] = int(scores[i] * 100)
 
         if get_fidelity:
             if target_id not in exp_nodes:
@@ -314,7 +321,7 @@ class xPath(GraphExplainer):
             g_m = dgl.node_subgraph(g, exp_nodes)
             g_m_target_id = g_m.ndata[dgl.NID].tolist().index(target_id)
             g_m_pred = full_model(g_m.ndata['nfeat'], self.dgl2dense(rel_matrix, g_m)).detach().cpu().numpy()[g_m_target_id]
-            fidelity = abs(original_pred - g_m_pred) / self.scale
+            fidelity = abs(original_pred - g_m_pred)
             return explanation, fidelity
 
         return explanation

@@ -81,7 +81,7 @@ class Explanation:
             pass
 
         elif self.explainer_name == 'xpathExplainer':
-            self.explainer = xpath.xPath(graph_model="homograph", num_layers=1, device=self.device)
+            self.explainer = xpath.xPath(num_layers=1, device=self.device)
 
     def load_data(self):
         self.graph_data = torch.Tensor(np.load(self.graph_data_path)).to(self.device)
