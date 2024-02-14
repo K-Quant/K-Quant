@@ -93,3 +93,4 @@ def _transpositions(first, second):
 class JaroDistanceException(Exception):
     def __init__(self, message):
             super(Exception, self).__init__(message)
+# update 2024-02-15 07:40:57
