@@ -117,7 +117,7 @@ def run_explanation(args):
         return relative_stocks_dict, score_dict
 
 
-def run_input_gradient_explanation(args):
+def load_params(args):
     param_dict = json.load(open(args.model_path + "/" + args.model_name + '/info.json'))['config']
     # The param_dict is really confusing, so I add the following lines to make it work at my computer.
     param_dict['market_value_path'] = args.market_value_path
@@ -131,6 +131,10 @@ def run_input_gradient_explanation(args):
     param_dict['graph_data_path'] = param_dict['stock2stock_matrix']
     param_dict['graph_model'] = param_dict['model_name']
     param_args = argparse.Namespace(**param_dict)
+    return param_args
+
+def run_input_gradient_explanation(args):
+    param_args = load_params(args)
     if not args.explainer == 'inputGradientExplainer':
         return None
     data_loader = create_data_loaders(args)
@@ -154,28 +158,24 @@ def search_stocks_prediction_explanation(args, exp_result_dict):
 
 
 def run_xpath_explanation(args, get_fidelity=False, top_k=3):
-    param_dict = json.load(open(args.model_path + "/" + args.model_name + '/info.json'))['config']
-    # The param_dict is really confusing, so I add the following lines to make it work at my computer.
-    param_dict['market_value_path'] = args.market_value_path
-    param_dict['stock2stock_matrix'] = args.stock2stock_matrix
-    param_dict['stock_index'] = args.stock_index
-    param_dict['model_dir'] = args.model_dir + "/" + args.model_name
-    param_dict['data_root'] = args.data_root
-    param_dict['start_date'] = args.start_date
-    param_dict['end_date'] = args.end_date
-    param_dict['device'] = device
-    param_dict['graph_data_path'] = param_dict['stock2stock_matrix']
-    param_dict['graph_model'] = param_dict['model_name']
-    param_args = argparse.Namespace(**param_dict)
-
+    param_args = load_params(args)
     data_loader = create_data_loaders(args)
     explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
     with open(args.relation_name_list_file, 'r') as json_file:
         _relation_name_list = json.load(json_file)
-    res = explanation.explain_xpath(stock_list=args.stock_list, get_fidelity=get_fidelity,
+    res = explanation.explain_x(stock_list=args.stock_list, get_fidelity=get_fidelity,
                                          top_k=top_k, relation_list=_relation_name_list)
     return res
 
+def run_gnn_explainer(args, top_k=3):
+    param_args = load_params(args)
+    data_loader = create_data_loaders(args)
+    explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
+    with open(args.relation_name_list_file, 'r') as json_file:
+        _relation_name_list = json.load(json_file)
+    res = explanation.explain_x(stock_list=args.stock_list, top_k=top_k,
+                                            relation_list=_relation_name_list)
+    return res
 
 def check_all_relative_stock(args, exp_result_dict):
     _stock_index = np.load(args.stock_index, allow_pickle=True).item()
@@ -306,11 +306,26 @@ if __name__ == '__main__':
     # print(exp_result_dict)
 
     # for xpath:
-    args.explainer = 'xpathExplainer'
-    exp_result_dict = run_xpath_explanation(args, get_fidelity=False, top_k=3)
-    print(exp_result_dict)
+    # args.explainer = 'xpathExplainer'
+    # exp_result_dict = run_xpath_explanation(args, get_fidelity=False, top_k=3)
+    # print(exp_result_dict)
     # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True, top_k=3)
     # print(exp_result_dict, fidelity)
+
+    # save the explanation result
+    # exp_dict = {'relative_stocks_dict': relative_stocks_dict, 'score_dict': score_dict}
+    # save_path = r'.\results'
+    # with open(r'{}/{}.json'.format(save_path, args.explainer), 'w') as f:
+    #     json.dump(exp_dict, f)
+
+    # for GNNExplainer:
+    args.explainer = 'gnnExplainer'
+    exp_result_dict = run_gnn_explainer(args, top_k=3)
+    # print(exp_result_dict)
+
+    # for EffectExplainer:
+    args.explainer = 'hencexExplainer'
+    exp_result_dict = run_hencex_explainer(args)
 
     # print stock names
     import pickle
@@ -318,8 +333,3 @@ if __name__ == '__main__':
     for date in exp_result_dict.keys():
         stock_names = [stock_2_name[stock] for stock in exp_result_dict[date][args.stock_list[0]].keys()]
         print(f'{date} {stock_2_name[args.stock_list[0]]}: {stock_names}')
-
-    # exp_dict = {'relative_stocks_dict': relative_stocks_dict, 'score_dict': score_dict}
-    # save_path = r'.\results'
-    # with open(r'{}/{}.json'.format(save_path, args.explainer), 'w') as f:
-    #     json.dump(exp_dict, f)

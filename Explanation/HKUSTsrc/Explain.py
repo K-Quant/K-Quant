@@ -11,7 +11,7 @@ from tqdm import tqdm
 # from Config import config
 from Explanation.HKUSTsrc.Explainer import *
 from Explanation.HKUSTsrc.model import *
-from Explanation.SJsrc.interpreter import xpath
+from Explanation.SJsrc.interpreter import xpath, gnnexplainer
 from Explanation.utils.Evaluation import metric_fn
 from Model.model_pool.models.model import relation_GATs
 
@@ -66,7 +66,9 @@ class Explanation:
 
     def get_explainer(self):
         if self.explainer_name == 'gnnExplainer':
-            self.explainer = GNNExplainer(self.pred_model, self.args)
+            # self.explainer = GNNExplainer(self.pred_model, self.args)
+            # TODO: Note that Jiale convert it to SJsrc code
+            self.explainer = gnnexplainer.GNNExplainer(self.pred_model, device=self.device)
 
         elif self.explainer_name == 'inputGradientExplainer':
             self.explainer = InputGradientExplainer(self.pred_model)
@@ -81,7 +83,7 @@ class Explanation:
             pass
 
         elif self.explainer_name == 'xpathExplainer':
-            self.explainer = xpath.xPath(num_layers=1, device=self.device)
+            self.explainer = xpath.xPath_Dense(model=self.pred_model, num_layers=1, device=self.device)
 
     def load_data(self):
         self.graph_data = torch.Tensor(np.load(self.graph_data_path)).to(self.device)
@@ -116,7 +118,7 @@ class Explanation:
                                           'stock_index_in_adj': stock_index.detach().numpy()}
         return exp_result_dict
 
-    def explain_xpath(self, stock_list=None, get_fidelity=False, top_k=5, relation_list=None):
+    def explain_x(self, stock_list=None, get_fidelity=False, top_k=5, relation_list=None):
         # xpathExplainer params:
         #   stock_list->list of stock name, if None, explain all stocks
         #   get_fidelity->bool, if True, return fidelity in the result dict
@@ -133,25 +135,24 @@ class Explanation:
             date = datetime.datetime.date(index[0][0])
             graph = self.graph_data[stock_index][:, stock_index]
             dgl_graph = self.explainer.dense2dgl(graph, feature, self.explainer.device)
-            if self.explainer_name == 'xpathExplainer':
-                exp_result_dict[str(date)] = {}
-                if not stock_list:
-                    stock_id_list = torch.arange(len(stock_index))
+            exp_result_dict[str(date)] = {}
+            if not stock_list:
+                stock_id_list = torch.arange(len(stock_index))
+            else:
+                stock_codes = index.get_level_values(1).unique().tolist()
+                stock_id_list = [stock_codes.index(x) for x in stock_list]
+            original_preds = self.pred_model(feature, graph).detach().cpu().numpy()
+            for stock_id in stock_id_list:
+                if get_fidelity:
+                    explanation, fidelity = \
+                        self.explainer.explain(original_preds, dgl_graph, graph,
+                                                   stock_id, get_fidelity=get_fidelity, top_k=top_k)
+                    fidelity_all.append(fidelity)
                 else:
-                    stock_codes = index.get_level_values(1).unique().tolist()
-                    stock_id_list = [stock_codes.index(x) for x in stock_list]
-                original_pred = self.pred_model(feature, graph).detach().cpu().numpy()
-                for stock_id in stock_id_list:
-                    if get_fidelity:
-                        explanation, fidelity = \
-                            self.explainer.explain_dense(self.pred_model, original_pred, dgl_graph, graph,
-                                                              stock_id, get_fidelity=get_fidelity, top_k=top_k)
-                        fidelity_all.append(fidelity)
-                    else:
-                        explanation = \
-                            self.explainer.explain_dense(self.pred_model, original_pred, dgl_graph, graph,
-                                                              stock_id, top_k=top_k)
-                    res = {}
+                    explanation = \
+                        self.explainer.explain(original_preds, dgl_graph, graph, stock_id, top_k=top_k)
+                res = {}
+                if self.explainer_name == 'xpathExplainer':
                     for k, v in explanation.items():
                         k_stock = index[k][1]
                         res[k_stock] = {}
@@ -161,7 +162,18 @@ class Explanation:
                             res[k_stock]['relations'] = np.array(relation_list)[stock_relations].tolist()
                             if type(res[k_stock]['relations']) == str:
                                 res[k_stock]['relations'] = [res[k_stock]['relations']]
-                    exp_result_dict[str(date)][index[stock_id][1]] = res
+                else:
+                    # for GNNExplainer, EffectExplainer
+                    for k, v in explanation.items():
+                        k_stock = index[k][1]
+                        res[k_stock] = {}
+                        res[k_stock]['total_score'] = v[0]
+                        if relation_list:
+                            stock_relations = list(v[1].keys())
+                            res[k_stock]['individual scores'] = {}
+                            for r in stock_relations:
+                                res[k_stock]['individual scores'][relation_list[r]] = v[1][r]
+                exp_result_dict[str(date)][index[stock_id][1]] = res
         if get_fidelity:
             return exp_result_dict, np.mean(fidelity_all)
         return exp_result_dict
