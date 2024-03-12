@@ -177,6 +177,17 @@ def run_gnn_explainer(args, top_k=3):
                                             relation_list=_relation_name_list)
     return res
 
+def run_hencex_explainer(args, top_k=3):
+    param_args = load_params(args)
+    data_loader = create_data_loaders(args)
+    explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
+    with open(args.relation_name_list_file, 'r') as json_file:
+        _relation_name_list = json.load(json_file)
+    res = explanation.explain_x(stock_list=args.stock_list, top_k=top_k,
+                                            relation_list=_relation_name_list)
+    return res
+
+
 def check_all_relative_stock(args, exp_result_dict):
     _stock_index = np.load(args.stock_index, allow_pickle=True).item()
     with open(args.relation_name_list_file, 'r') as json_file:
@@ -299,15 +310,15 @@ if __name__ == '__main__':
     # args.date_list = ['2022-06-02']
 
     # for inputGradient:
-    # args.explainer = 'inputGradientExplainer'
-    # exp_result_dict, explanation = run_input_gradient_explanation(args)
-    # exp_result_dict = search_stocks_prediction_explanation(args, exp_result_dict)
-    # # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
-    # print(exp_result_dict)
+    args.explainer = 'inputGradientExplainer'
+    exp_result_dict, explanation = run_input_gradient_explanation(args)
+    exp_result_dict = search_stocks_prediction_explanation(args, exp_result_dict)
+    # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
+    print(exp_result_dict)
 
     # for xpath:
-    # args.explainer = 'xpathExplainer'
-    # exp_result_dict = run_xpath_explanation(args, get_fidelity=False, top_k=3)
+    args.explainer = 'xpathExplainer'
+    exp_result_dict = run_xpath_explanation(args, get_fidelity=False, top_k=3)
     # print(exp_result_dict)
     # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True, top_k=3)
     # print(exp_result_dict, fidelity)
@@ -325,7 +336,7 @@ if __name__ == '__main__':
 
     # for EffectExplainer:
     args.explainer = 'hencexExplainer'
-    exp_result_dict = run_hencex_explainer(args)
+    exp_result_dict = run_hencex_explainer(args, top_k=3)
 
     # print stock names
     import pickle

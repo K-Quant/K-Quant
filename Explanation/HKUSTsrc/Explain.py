@@ -11,7 +11,7 @@ from tqdm import tqdm
 # from Config import config
 from Explanation.HKUSTsrc.Explainer import *
 from Explanation.HKUSTsrc.model import *
-from Explanation.SJsrc.interpreter import xpath, gnnexplainer
+from Explanation.SJsrc.interpreter import xpath, gnnexplainer, hencex
 from Explanation.utils.Evaluation import metric_fn
 from Model.model_pool.models.model import relation_GATs
 
@@ -85,6 +85,9 @@ class Explanation:
         elif self.explainer_name == 'xpathExplainer':
             self.explainer = xpath.xPath_Dense(model=self.pred_model, num_layers=1, device=self.device)
 
+        elif self.explainer_name == 'hencexExplainer':
+            self.explainer = hencex.HencexExplainer(self.pred_model, self.device)
+
     def load_data(self):
         self.graph_data = torch.Tensor(np.load(self.graph_data_path)).to(self.device)
         self.num_relation = self.graph_data.shape[2]
@@ -134,7 +137,7 @@ class Explanation:
             feature, label, market_value, stock_index, index = data_loader.get(slc)
             date = datetime.datetime.date(index[0][0])
             graph = self.graph_data[stock_index][:, stock_index]
-            dgl_graph = self.explainer.dense2dgl(graph, feature, self.explainer.device)
+            dgl_graph = self.explainer.dense2sparse(graph, feature, self.explainer.device)
             exp_result_dict[str(date)] = {}
             if not stock_list:
                 stock_id_list = torch.arange(len(stock_index))
@@ -162,6 +165,15 @@ class Explanation:
                             res[k_stock]['relations'] = np.array(relation_list)[stock_relations].tolist()
                             if type(res[k_stock]['relations']) == str:
                                 res[k_stock]['relations'] = [res[k_stock]['relations']]
+                elif self.explainer_name == 'hencexExplainer':
+                    for k in explanation:
+                        k_stock = index[k][1]
+                        res[k_stock] = []
+                        if relation_list:
+                            stock_relations = graph[stock_id, k, :].nonzero().squeeze().tolist()
+                            res[k_stock] = np.array(relation_list)[stock_relations].tolist()
+                            if type(res[k_stock]) == str:
+                                res[k_stock] = [res[k_stock]]
                 else:
                     # for GNNExplainer, EffectExplainer
                     for k, v in explanation.items():

@@ -468,7 +468,7 @@ class xPath_Dense():
         # sg = dgl.remove_edges(g, del_id)
         return sg.to(self.device)
 
-    def dense2dgl(self, rel_matrix, feature, device):
+    def dense2sparse(self, rel_matrix, feature, device):
         # convert adj matrix to dgl sparse graph
         if len(rel_matrix.shape) == 3:
             rel_matrix = rel_matrix.sum(axis=-1)  # [N, N]
@@ -477,7 +477,7 @@ class xPath_Dense():
         dgl_graph.ndata['nfeat'] = torch.Tensor(feature).to(device)
         return dgl_graph
 
-    def dgl2dense(self, rel_matrix, g):
+    def sparse2dense(self, rel_matrix, g):
         g_adj = torch.zeros(g.num_nodes(), g.num_nodes(), rel_matrix.shape[-1])
         src, dst = g.edges()
         g_nids = g.ndata[dgl.NID]
@@ -514,7 +514,7 @@ class xPath_Dense():
                     p = paths[pid]
                     path_key = tuple(p)
                     shadow_graph = self.get_proxy_homograph(g_c, p)
-                    pred = model(shadow_graph.ndata['nfeat'], self.dgl2dense(rel_matrix, shadow_graph)).detach().cpu().numpy()
+                    pred = model(shadow_graph.ndata['nfeat'], self.sparse2dense(rel_matrix, shadow_graph)).detach().cpu().numpy()
                     tmp = abs(original_pred * self.scale - pred[new_target_id] * self.scale)
                     path2s[path_key] = tmp
                     top_k_p[path_key] = tmp
@@ -561,7 +561,7 @@ class xPath_Dense():
                 exp_nodes.append(target_id)
             g_m = dgl.node_subgraph(g, exp_nodes)
             g_m_target_id = g_m.ndata[dgl.NID].tolist().index(target_id)
-            g_m_pred = model(g_m.ndata['nfeat'], self.dgl2dense(rel_matrix, g_m)).detach().cpu().numpy()[g_m_target_id]
+            g_m_pred = model(g_m.ndata['nfeat'], self.sparse2dense(rel_matrix, g_m)).detach().cpu().numpy()[g_m_target_id]
             fidelity = abs(original_pred - g_m_pred)
             return explanation, fidelity
 

@@ -17,7 +17,7 @@ class GNNExplainer:
         }
         self.MIN = -1e9
 
-    def dense2dgl(self, rel_matrix, feature, device):
+    def dense2sparse(self, rel_matrix, feature, device):
         # convert adj matrix to dgl sparse graph
         if len(rel_matrix.shape) == 3:
             rel_matrix = rel_matrix.sum(axis=-1)  # [N, N]
@@ -26,7 +26,7 @@ class GNNExplainer:
         dgl_graph.ndata['nfeat'] = torch.Tensor(feature).to(device)
         return dgl_graph
 
-    def dgl2dense(self, rel_matrix, g):
+    def sparse2dense(self, rel_matrix, g):
         g_adj = torch.zeros(g.num_nodes(), g.num_nodes(), rel_matrix.shape[-1])
         src, dst = g.edges()
         g_nids = g.ndata[dgl.NID]
@@ -61,7 +61,7 @@ class GNNExplainer:
         new_target_id = origin_ids.index(target_id)
         original_pred = original_preds[stock_id]
 
-        g_c_adj = self.dgl2dense(rel_matrix, g_c)
+        g_c_adj = self.sparse2dense(rel_matrix, g_c)
         self.set_mask(g_c_adj)
         self.model.to(self.device)
         optimizer = torch.optim.Adam([self.edge_mask], lr=self.lr)
