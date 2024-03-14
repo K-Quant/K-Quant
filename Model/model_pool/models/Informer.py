@@ -66,3 +66,4 @@ class Model(nn.Module):
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None):
         dec_out = self.regression(x_enc, x_mark_enc)
         return dec_out.squeeze()  # [B, N]
+# update 2024-03-14 17:46:23
