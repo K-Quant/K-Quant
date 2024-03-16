@@ -490,7 +490,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # model
-    parser.add_argument('--model_name', default='RSR')
+    parser.add_argument('--model_name', default='relation_GATs')
     parser.add_argument('--d_feat', type=int, default=6)
     parser.add_argument('--hidden_size', type=int, default=128)
     parser.add_argument('--num_layers', type=int, default=2)
@@ -528,7 +528,7 @@ def parse_args():
 
     # data
     parser.add_argument('--data_set', type=str, default='csi300')
-    parser.add_argument('--target', type=str, default='t+0')
+    parser.add_argument('--target', type=str, default='t+1')
     parser.add_argument('--pin_memory', action='store_false', default=True)
     parser.add_argument('--batch_size', type=int, default=-1)  # -1 indicate daily batch
     parser.add_argument('--least_samples_num', type=float, default=1137.0) 
@@ -537,8 +537,8 @@ def parse_args():
     parser.add_argument('--train_end_date', default='2020-12-31')
     parser.add_argument('--valid_start_date', default='2019-01-01')
     parser.add_argument('--valid_end_date', default='2020-12-31')
-    parser.add_argument('--test_start_date', default='2019-01-01')
-    parser.add_argument('--test_end_date', default='2020-12-31')
+    parser.add_argument('--test_start_date', default='2021-01-01')
+    parser.add_argument('--test_end_date', default='2021-12-31')
 
     # other
     parser.add_argument('--seed', type=int, default=0)

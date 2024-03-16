@@ -553,7 +553,7 @@ class ALSTM(nn.Module):
 
 
 class relation_GATs(nn.Module):
-    def __init__(self, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0, base_model="GRU"):
+    def __init__(self, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0, base_model="GRU", num_relation=0):
         super().__init__()
 
         self.d_feat = d_feat

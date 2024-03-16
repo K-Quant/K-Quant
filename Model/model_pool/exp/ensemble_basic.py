@@ -336,12 +336,12 @@ def sim_linear(data, model_pool, lookback=30, eva_type='ic', select_num=5):
 
 
 def main(args, device):
-    model_pool = ['GRU', 'LSTM', 'GATs', 'MLP', 'ALSTM', 'SFM']
-    all_model_pool = ['RSR_hidy_is', 'KEnhance', 'LSTM', 'GRU', 'GATs', 'MLP', 'ALSTM', 'SFM', 'HIST']
+    # model_pool = ['GRU', 'LSTM', 'GATs', 'MLP', 'ALSTM', 'SFM']
+    model_pool = ['RSR_hidy_is', 'KEnhance', 'LSTM', 'GRU', 'GATs', 'MLP', 'ALSTM', 'SFM', 'HIST']
     output = batch_prediction(args, model_pool, device)
-    output, report = average_and_blend(args, output, all_model_pool)
-    output, report = sjtu_ensemble(args, output, all_model_pool)
-    output, report = sim_linear(output, all_model_pool)
+    output, report = average_and_blend(args, output, model_pool)
+    output, report = sjtu_ensemble(args, output, model_pool)
+    output, report = sim_linear(output, model_pool)
     # pd.to_pickle(output, 'pred_output/all_in_one_incre.pkl')
     print(output.head())
     # print(report)
@@ -360,7 +360,7 @@ def parse_args():
     parser.add_argument('--test_end_date', default='2023-06-30')
     parser.add_argument('--device', default='cuda:1')
     parser.add_argument('--incremental_mode', default=False, help='load incremental updated models or not')
-    parser.add_argument('--prefix', default='output/for_platform/')
+    parser.add_argument('--prefix', default='output/')
     parser.add_argument('--incre_prefix', default='output/for_platform/INCRE/')
 
     args = parser.parse_args()

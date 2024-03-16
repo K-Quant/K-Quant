@@ -3,7 +3,7 @@
 
 ## Introduction
 
-This repo is for K-Quant project, stock forecasting module.
+This repo is a part of K-Quant project, stock forecasting module.
 
 This module have 3 basic functions:
 ### Module 2.1 knowledge based stock recommendation models
@@ -46,54 +46,44 @@ HIST
 RSR
 relation_GATs
 KEnhance
-------models that SOTA on other time series library-----
-DLinear [AAAI 2023]
-Autoformer [NeurIPS 2023]
-Crossformer [ICLR 2023]
-ETSformer
-FEDformer [ICML 2022]
-FiLM [NeurIPS 2022]
-Informer [AAAI 2021]
-PatchTST [ICLR 2023]
----------------------------------------------------------
 ```
-### Run experiments
+#### 2.1.1 Run experiments
     python learn.py --model_name [model you choose] --outdir 'output/[folder your named]'
-### Results
+#### 2.2.2 Results
 The result will be stored in output folder, if you need some well-trained models, we provide in [this link](https://drive.google.com/file/d/1yGHXZDcCgY4AAp_UM_gKXyKo25Atmoft/view?usp=sharing)
-### Knowledge choice
-For models in relation_model_dict(in exp/learn.py), different knowledge source could be chosen as the knowledge input, we have the following choice:
-```angular2html
-industry-relation
-hidy-relation[extracted from HiDy in Module 1]
-dueefin
-shanghai tech
-Fr2kg
-Doc2edga
-```
+
+[//]: # (### Knowledge choice)
+[//]: # (For models in relation_model_dict&#40;in exp/learn.py&#41;, different knowledge source could be chosen as the knowledge input, we have the following choice:)
+[//]: # (```angular2html)
+[//]: # (industry-relation)
+[//]: # (hidy-relation[extracted from HiDy in Module 1])
+[//]: # (dueefin)
+[//]: # (shanghai tech)
+[//]: # (Fr2kg)
+[//]: # (Doc2edga)
+[//]: # (```)
 
 
-### To save the prediction result:
+#### 2.1.3 To save the prediction result:
 modify the ```prefix``` and ```model_pool``` in ```exp/ensemble_basic.py```.
 
 Then run ```batch_prediction``` in ```exp/ensemble_basic.py```.
 
 You can get multi models prediction results in one pickle file.
 
-### Backtest
+#### 2.1.4 Backtest
 
-To run the backtest to evaluate the model performances on investment, 
+We employ backtrader and Qlib module to achieve a simple backtest function. To run the backtest to evaluate the model performances on investment, 
 run ```backtest.py``` to get the report or figure of cumulated excess return.
 
-The backtest need the prediction result from ```exp/ensemble_basic.py```
+The backtest need the prediction pickle file from ```exp/ensemble_basic.py```, other backtest modules are compatible.
 
-### Attention:
-For knowledge empowered model, we only support use THE SAME file while you train the model
+#### 2.1.5 Attention:
+For knowledge empowered model, we only support use THE SAME file while you train the model, since some models take the number of relations as a parameter while model initializing. 
 
-So when it comes to dynamic knowledge, you need to update the knowledge file and cover the path in ```exp/prediction.py main()```
+So when it comes to dynamic knowledge, if you want to use up-to-date knowledge file, please cover the path in ```exp/prediction.py main()```
 
-For example, HIST needs up-to-date market value, and we use old one now which may could impact the model
-s performance.
+[//]: # (For example, HIST needs up-to-date market value, and we use old one now which may could impact the model's performance.)
 
 ## Module 2.2 Stock ensemble models
 

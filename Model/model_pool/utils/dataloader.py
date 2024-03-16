@@ -14,6 +14,7 @@ import sys
 provider_uri = "/Users/haowang/Desktop/project/stock_model/qlib_data/cn_data"
 qlib.init(provider_uri=provider_uri, region=REG_CN)
 from qlib.data.dataset import DatasetH
+from qlib.data.dataset.handler import DataHandlerLP
 
 class DataLoader:
 
