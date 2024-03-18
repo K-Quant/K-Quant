@@ -23,7 +23,7 @@ def parse_args():
 
     # model
     parser.add_argument('--model_name', default='NRSR')
-    parser.add_argument('--model_path', default='D:\ProjectCodes\K-Quant\parameter')
+    parser.add_argument('--model_path', default='D:\Research\Fintech\K-Quant\parameter')
     parser.add_argument('--num_relation', type= int, default=102)
     parser.add_argument('--d_feat', type=int, default=6)
     parser.add_argument('--hidden_size', type=int, default=128)
@@ -63,17 +63,21 @@ def parse_args():
     parser.add_argument('--end_date', default='2019-01-05')
 
     # input for csi 300
-    parser.add_argument('--data_root', default='D:\ProjectCodes\K-Quant\Data')
-    parser.add_argument('--market_value_path', default= 'D:\ProjectCodes\K-Quant\Data\csi300_market_value_07to20.pkl')
+    parser.add_argument('--data_root', default='D:\Research\Fintech\K-Quant\Data')
+    parser.add_argument('--market_value_path', default= 'D:\Research\Fintech\K-Quant\Data\csi300_market_value_07to20.pkl')
     parser.add_argument('--stock2concept_matrix', default='D:\ProjectCodes\K-Quant\Data\csi300_stock2concept.npy')
-    parser.add_argument('--stock2stock_matrix', default='D:\ProjectCodes\K-Quant\Data\csi300_multi_stock2stock_all.npy')
-    parser.add_argument('--stock_index', default='D:\ProjectCodes\K-Quant\Data\csi300_stock_index.npy')
-    parser.add_argument('--model_dir', default='D:\ProjectCodes\K-Quant\parameter')
+    parser.add_argument('--stock2stock_matrix', default='D:\Research\Fintech\K-Quant\Data\csi300_multi_stock2stock_all.npy')
+
+
+    parser.add_argument('--stock_index', default='D:\Research\Fintech\K-Quant\Data\csi300_stock_index.npy')
+    parser.add_argument('--model_dir', default='D:\Research\Fintech\K-Quant\parameter')
+    parser.add_argument('--events_files', default='D:\Research\Fintech\K-Quant\Data\event_data.json')
+
     parser.add_argument('--overwrite', action='store_true', default=False)
     parser.add_argument('--device', default='cpu')
 
     # relation
-    parser.add_argument('--relation_name_list_file', default=r'D:\ProjectCodes\K-Quant\Data\relation_name_list.json')
+    parser.add_argument('--relation_name_list_file', default=r'D:\Research\Fintech\K-Quant\Data\relation_name_list.json')
 
     args = parser.parse_args()
 
@@ -145,15 +149,65 @@ def run_input_gradient_explanation(args):
     return exp_result_dict, explanation
 
 
-def search_stocks_prediction_explanation(args, exp_result_dict):
+def get_previous_days(start_date, n):
+    from datetime import datetime, timedelta
+    # 将字符串日期转换为 datetime 对象
+    start_date = datetime.strptime(start_date, "%Y-%m-%d")
+
+    # 创建一个空列表，用于存储检索到的日期
+    date_list = []
+
+    # 从指定日期开始向前检索 n 天
+    for i in range(n):
+        # 计算当前日期减去 i 天后的日期
+        previous_date = start_date - timedelta(days=i)
+        # 将日期添加到列表中
+        date_list.append(previous_date.strftime("%Y-%m-%d"))
+
+    return date_list
+
+
+
+def convert_stock_code(stock_code):
+    # 提取交易所代码和数字部分
+    exchange_code = stock_code[:2]
+    numeric_part = stock_code[2:]
+
+    # 将交易所代码移动到末尾
+    converted_stock_code = numeric_part + '.' + exchange_code
+
+    return converted_stock_code
+
+
+def get_events(date, num_days, stock_id, event_data):
+    converted_stock_id = convert_stock_code(stock_id)
+    previous_days = get_previous_days(date, num_days)
+    events = {}
+    if converted_stock_id in event_data.keys():
+        have_event_dates = [d for d in event_data[converted_stock_id].keys() if d in previous_days]
+        for d in have_event_dates:
+            events[d] = event_data[converted_stock_id][d]
+
+        return events
+
+    else:
+        return {}
+
+
+
+def search_stocks_prediction_explanation(args, exp_result_dict, event_data):
     result_subset = {}
     for stock_id in args.stock_list:
         result_subset[stock_id] = {}
         for date, result_data in exp_result_dict.items():
             # Check if date is within the specified range
             if args.start_date <= date <= args.end_date:
-                if stock_id in result_data.keys():
-                    result_subset[stock_id][date] = result_data[stock_id]
+                result_subset[stock_id][date] = {}
+                for key, res in result_data[stock_id].items():
+                    result_subset[stock_id][date][key] = {
+                        "explanation": res,
+                        "events": get_events(date, args.seq_len, key, event_data)
+                    }
     return result_subset
 
 
@@ -303,22 +357,25 @@ def get_results(args, start_date, end_date, explainer, check_stock_list, check_d
 
 if __name__ == '__main__':
     args = parse_args()
-    args.start_date = '2022-06-01'
-    args.end_date = '2022-06-01'
-    args.stock_list = ['SH600048']
+    args.start_date = '2022-12-01'
+    args.end_date = '2022-12-03'
+    args.stock_list = ['SH600383']
     args.model_name = 'NRSR'
+    events_files = args.events_files
     # args.date_list = ['2022-06-02']
+    with open(events_files, 'r', encoding='utf-8') as f:
+        events_data = json.load(f)
 
     # for inputGradient:
     args.explainer = 'inputGradientExplainer'
     exp_result_dict, explanation = run_input_gradient_explanation(args)
-    exp_result_dict = search_stocks_prediction_explanation(args, exp_result_dict)
+    exp_result_dict = search_stocks_prediction_explanation(args, exp_result_dict, events_data)
     # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
     print(exp_result_dict)
 
     # for xpath:
-    args.explainer = 'xpathExplainer'
-    exp_result_dict = run_xpath_explanation(args, get_fidelity=False, top_k=3)
+    # args.explainer = 'xpathExplainer'
+    # exp_result_dict = run_xpath_explanation(args, get_fidelity=False, top_k=3)
     # print(exp_result_dict)
     # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True, top_k=3)
     # print(exp_result_dict, fidelity)
@@ -330,17 +387,17 @@ if __name__ == '__main__':
     #     json.dump(exp_dict, f)
 
     # for GNNExplainer:
-    args.explainer = 'gnnExplainer'
-    exp_result_dict = run_gnn_explainer(args, top_k=3)
+    # args.explainer = 'gnnExplainer'
+    # exp_result_dict = run_gnn_explainer(args, top_k=3)
     # print(exp_result_dict)
 
     # for EffectExplainer:
-    args.explainer = 'hencexExplainer'
-    exp_result_dict = run_hencex_explainer(args, top_k=3)
+    # args.explainer = 'hencexExplainer'
+    # exp_result_dict = run_hencex_explainer(args, top_k=3)
 
     # print stock names
-    import pickle
-    stock_2_name = pickle.load(open(r'../Data/company_full_name.pkl', 'rb'))
-    for date in exp_result_dict.keys():
-        stock_names = [stock_2_name[stock] for stock in exp_result_dict[date][args.stock_list[0]].keys()]
-        print(f'{date} {stock_2_name[args.stock_list[0]]}: {stock_names}')
+    # import pickle
+    # stock_2_name = pickle.load(open(r'../Data/company_full_name.pkl', 'rb'))
+    # for date in exp_result_dict.keys():
+    #     stock_names = [stock_2_name[stock] for stock in exp_result_dict[date][args.stock_list[0]].keys()]
+    #     print(f'{date} {stock_2_name[args.stock_list[0]]}: {stock_names}')
