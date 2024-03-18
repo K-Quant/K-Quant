@@ -16,10 +16,9 @@ import pandas as pd
 from torch.utils.tensorboard import SummaryWriter
 import sys
 sys.path.insert(0, sys.path[0]+"/../")
-from models.model import MLP, HIST, GRU, LSTM, GAT, ALSTM, SFM, RSR, relation_GATs, relation_GATs_3heads, KEnhance
-from qlib.contrib.model.pytorch_transformer import Transformer
+from models.ee_model import event_embedding_model
 from utils.utils import metric_fn, mse
-from utils.dataloader import create_loaders
+from utils.dataloader import create_event_loaders
 import warnings
 import logging
 
@@ -30,52 +29,8 @@ device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
 EPS = 1e-12
 warnings.filterwarnings('ignore')
 
-relation_model_dict = [
-    'RSR',
-    'relation_GATs',
-    'relation_GATs_3heads',
-    'KEnhance'
-]
-
-
 def get_model(model_name):
-
-    if model_name.upper() == 'MLP':
-        return MLP
-
-    if model_name.upper() == 'LSTM':
-        return LSTM
-        # return LSTMModel
-
-    if model_name.upper() == 'GRU':
-        return GRU
-        # return GRUModel
-
-    if model_name.upper() == 'GATS':
-        return GAT
-
-    if model_name.upper() == 'SFM':
-        return SFM
-
-    if model_name.upper() == 'ALSTM':
-        return ALSTM
-
-    if model_name.upper() == 'HIST':
-        return HIST
-
-    if model_name.upper() == 'RSR':
-        return RSR
-
-    if model_name.upper() == 'TRANSFORMER':
-        return Transformer
-
-    if model_name.upper() == 'RELATION_GATS':
-        return relation_GATs
-
-    if model_name.upper() == 'KENHANCE':
-        return KEnhance
-
-    raise ValueError('unknown model name `%s`'%model_name)
+    return event_embedding_model
 
 
 def average_params(params_list):
@@ -122,8 +77,7 @@ def pprint(*args):
 global_step = -1
 
 
-def train_epoch(epoch, model, optimizer, train_loader, writer, args,
-                stock2concept_matrix=None, stock2stock_matrix = None):
+def train_epoch(epoch, model, optimizer, train_loader, writer, args, stock2stock_matrix = None):
     """
     train epoch function
     :param epoch: number of epoch of training
@@ -142,19 +96,9 @@ def train_epoch(epoch, model, optimizer, train_loader, writer, args,
 
     for i, slc in tqdm(train_loader.iter_batch(), total=train_loader.batch_length):
         global_step += 1
-        feature, label, market_value, stock_index, _, mask = train_loader.get(slc)
+        feature, label, market_value, embedding, stock_index, _ = train_loader.get(slc)
         # feature here is the data batch_size, 360
-        if args.model_name == 'HIST':
-            # if HIST is used, take the stock2concept_matrix and market_value
-            pred = model(feature, stock2concept_matrix[stock_index], market_value)
-            # the stock2concept_matrix[stock_index] is a matrix, shape is (the number of stock index, predefined con)
-            # the stock2concept_matrix has been sort to the order of stock index
-        elif args.model_name in relation_model_dict:
-            pred = model(feature, stock2stock_matrix[stock_index][:, stock_index])
-        else:
-            # other model only use feature as input
-            pred = model(feature)
-
+        pred = model(feature, stock2stock_matrix[stock_index][:, stock_index], embedding)
         loss = loss_fn(pred, label)
 
         optimizer.zero_grad()
@@ -163,14 +107,7 @@ def train_epoch(epoch, model, optimizer, train_loader, writer, args,
         optimizer.step()
 
 
-def test_epoch(epoch, model, test_loader, writer, args, stock2concept_matrix=None, stock2stock_matrix=None, prefix='Test'):
-    """
-    :return: loss -> mse
-             scores -> ic
-             rank_ic
-             precision, recall -> precision, recall @1, 3, 5, 10, 20, 30, 50, 100
-    """
-
+def test_epoch(epoch, model, test_loader, writer, args, stock2stock_matrix=None, prefix='Test'):
     model.eval()
 
     losses = []
@@ -178,17 +115,10 @@ def test_epoch(epoch, model, test_loader, writer, args, stock2concept_matrix=Non
 
     for i, slc in tqdm(test_loader.iter_daily(), desc=prefix, total=test_loader.daily_length):
 
-        feature, label, market_value, stock_index, index, mask = test_loader.get(slc)
+        feature, label, market_value, embedding, stock_index, index = test_loader.get(slc)
 
         with torch.no_grad():
-            if args.model_name == 'HIST':
-                pred = model(feature, stock2concept_matrix[stock_index], market_value)
-            elif args.model_name in relation_model_dict:
-                pred = model(feature, stock2stock_matrix[stock_index][:, stock_index])
-            else:
-                pred = model(feature)
-
-
+            pred = model(feature, stock2stock_matrix[stock_index][:, stock_index], embedding)
             loss = loss_fn(pred, label)
             preds.append(pd.DataFrame({'score': pred.cpu().numpy(), 'label': label.cpu().numpy(), }, index=index))
 
@@ -202,11 +132,7 @@ def test_epoch(epoch, model, test_loader, writer, args, stock2concept_matrix=Non
     here change scores to others 
     score is also very important, since it decide which model to choose 
     '''
-    # scores = ic + ndcg[100] + precision[100]
-    scores = ic
-    # scores = (precision[3] + precision[5] + precision[10] + precision[30])/4.0
-    # scores = -1.0 * mse
-
+    scores = rank_ic
     writer.add_scalar(prefix+'/Loss', np.mean(losses), epoch)
     writer.add_scalar(prefix+'/std(Loss)', np.std(losses), epoch)
     writer.add_scalar(prefix+'/'+args.metric, np.mean(scores), epoch)
@@ -215,21 +141,16 @@ def test_epoch(epoch, model, test_loader, writer, args, stock2concept_matrix=Non
     return np.mean(losses), scores, precision, recall, ic, rank_ic, ndcg
 
 
-def inference(model, data_loader, stock2concept_matrix=None, stock2stock_matrix=None):
+def inference(model, data_loader, stock2stock_matrix=None):
 
     model.eval()
 
     preds = []
     for i, slc in tqdm(data_loader.iter_daily(), total=data_loader.daily_length):
 
-        feature, label, market_value, stock_index, index, mask = data_loader.get(slc)
+        feature, label, market_value, embedding, stock_index, index = data_loader.get(slc)
         with torch.no_grad():
-            if args.model_name == 'HIST':
-                pred = model(feature, stock2concept_matrix[stock_index], market_value)
-            elif args.model_name in relation_model_dict:
-                pred = model(feature, stock2stock_matrix[stock_index][:, stock_index])
-            else:
-                pred = model(feature)
+            pred = model(feature, stock2stock_matrix[stock_index][:, stock_index], embedding)
             preds.append(pd.DataFrame({'score': pred.cpu().numpy(), 'label': label.cpu().numpy(),}, index=index))
 
     preds = pd.concat(preds, axis=0)
@@ -261,16 +182,11 @@ def main(args):
     global_log_file = output_path + '/' + args.name + '_run.log'
 
     pprint('create loaders...')
-    train_loader, valid_loader, test_loader = create_loaders(args, device=device)
+    train_loader, valid_loader, test_loader = create_event_loaders(args, device=device)
 
-    stock2concept_matrix = np.load(args.stock2concept_matrix)
     stock2stock_matrix = np.load(args.stock2stock_matrix)
-    if args.model_name == 'HIST':
-        # HIST need stock2concept matrix, send it to device
-        stock2concept_matrix = torch.Tensor(stock2concept_matrix).to(device)
-    if args.model_name in relation_model_dict:
-        stock2stock_matrix = torch.Tensor(stock2stock_matrix).to(device)
-        num_relation = stock2stock_matrix.shape[2]
+    stock2stock_matrix = torch.Tensor(stock2stock_matrix).to(device)
+    num_relation = stock2stock_matrix.shape[2]
 
     all_precision = []
     all_recall = []
@@ -279,19 +195,7 @@ def main(args):
     all_ndcg = []
     for times in range(args.repeat):
         pprint('create model...')
-        if args.model_name == 'SFM':
-            model = get_model(args.model_name)(d_feat=args.d_feat, output_dim=32, freq_dim=25, hidden_size=args.hidden_size, dropout_W=0.5, dropout_U=0.5, device=device)
-        elif args.model_name == 'ALSTM':
-            model = get_model(args.model_name)(args.d_feat, args.hidden_size, args.num_layers, args.dropout, 'LSTM')
-        elif args.model_name == 'Transformer':
-            model = get_model(args.model_name)(args.d_feat, args.hidden_size, args.num_layers, dropout=0.5)
-        elif args.model_name == 'HIST':
-            model = get_model(args.model_name)(d_feat=args.d_feat, num_layers=args.num_layers, K=args.K)
-        elif args.model_name in relation_model_dict:
-            model = get_model(args.model_name)(num_relation=num_relation, d_feat=args.d_feat, num_layers=args.num_layers)
-        else:
-            model = get_model(args.model_name)(d_feat=args.d_feat, num_layers=args.num_layers)
-        
+        model = get_model(args.model_name)(num_relation=num_relation, d_feat=args.d_feat, num_layers=args.num_layers)
         model.to(device)
 
         optimizer = optim.Adam(model.parameters(), lr=args.lr)
@@ -304,7 +208,7 @@ def main(args):
         for epoch in range(args.n_epochs):
             pprint('Running', times, 'Epoch:', epoch)
             pprint('training...')
-            train_epoch(epoch, model, optimizer, train_loader, writer, args, stock2concept_matrix, stock2stock_matrix)
+            train_epoch(epoch, model, optimizer, train_loader, writer, args, stock2stock_matrix)
             # save model  after every epoch
             # -------------------------------------------------------------------------
             # torch.save(model.state_dict(), output_path+'/model.bin.e'+str(epoch))
@@ -318,9 +222,9 @@ def main(args):
 
             pprint('evaluating...')
             # compute the loss, score, pre, recall, ic, rank_ic on train, valid and test data
-            train_loss, train_score, train_precision, train_recall, train_ic, train_rank_ic, train_ndcg = test_epoch(epoch, model, train_loader, writer, args, stock2concept_matrix, stock2stock_matrix, prefix='Train')
-            val_loss, val_score, val_precision, val_recall, val_ic, val_rank_ic, val_ndcg = test_epoch(epoch, model, valid_loader, writer, args, stock2concept_matrix, stock2stock_matrix, prefix='Valid')
-            test_loss, test_score, test_precision, test_recall, test_ic, test_rank_ic, test_ndcg = test_epoch(epoch, model, test_loader, writer, args, stock2concept_matrix, stock2stock_matrix, prefix='Test')
+            train_loss, train_score, train_precision, train_recall, train_ic, train_rank_ic, train_ndcg = test_epoch(epoch, model, train_loader, writer, args, stock2stock_matrix, prefix='Train')
+            val_loss, val_score, val_precision, val_recall, val_ic, val_rank_ic, val_ndcg = test_epoch(epoch, model, valid_loader, writer, args, stock2stock_matrix, prefix='Valid')
+            test_loss, test_score, test_precision, test_recall, test_ic, test_rank_ic, test_ndcg = test_epoch(epoch, model, test_loader, writer, args, stock2stock_matrix, prefix='Test')
 
             pprint('train_loss %.6f, valid_loss %.6f, test_loss %.6f'%(train_loss, val_loss, test_loss))
             pprint('train_ic %.6f, valid_ic %.6f, test_ic %.6f' % (train_ic, val_ic, test_ic))
@@ -358,13 +262,10 @@ def main(args):
         res = dict()
         for name in ['train', 'valid', 'test']:
             # do prediction on train, valid and test data
-            pred = inference(model, eval(name+'_loader'), stock2concept_matrix=stock2concept_matrix,
-                            stock2stock_matrix=stock2stock_matrix)
+            pred = inference(model, eval(name+'_loader'), stock2stock_matrix=stock2stock_matrix)
             # save the pkl every repeat time
             # pred.to_pickle(output_path+'/pred.pkl.'+name+str(times))
-
             precision, recall, ic, rank_ic, ndcg = metric_fn(pred)
-
             pprint('%s: IC %.6f Rank IC %.6f' % (name, ic.mean(), rank_ic.mean()))
             pprint(name, ': Precision ', precision)
             pprint(name, ': Recall ', recall)
@@ -429,39 +330,20 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # model
-    parser.add_argument('--model_name', default='relation_GATs')
+    parser.add_argument('--model_name', default='event_embedding_model')
     parser.add_argument('--d_feat', type=int, default=6)
     parser.add_argument('--hidden_size', type=int, default=128)
     parser.add_argument('--num_layers', type=int, default=2)
     parser.add_argument('--dropout', type=float, default=0.1)
     parser.add_argument('--K', type=int, default=1)
     parser.add_argument('--loss_type', default='')
-    # for ts lib model
-    parser.add_argument('--seq_len', type=int, default=60)
-    parser.add_argument('--moving_avg', type=int, default=21)
-    parser.add_argument('--output_attention', action='store_true', help='whether to output attention in ecoder')
-    parser.add_argument('--embed', type=str, default='timeF',
-                        help='time features encoding, options:[timeF, fixed, learned]')
-    parser.add_argument('--freq', type=str, default='b',
-                        help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
-    parser.add_argument('--distil', action='store_false',
-                        help='whether to use distilling in encoder, using this argument means not using distilling',
-                        default=False)
-    parser.add_argument('--factor', type=int, default=1, help='attn factor')
-    parser.add_argument('--n_heads', type=int, default=1, help='num of heads')
-    parser.add_argument('--d_ff', type=int, default=64, help='dimension of fcn')
-    parser.add_argument('--activation', type=str, default='gelu', help='activation')
-    parser.add_argument('--e_layers', type=int, default=8, help='num of encoder layers')
-    parser.add_argument('--top_k', type=int, default=5, help='for TimesBlock')
-    parser.add_argument('--pred_len', type=int, default=-1, help='the length of pred squence, in regression set to -1')
-    parser.add_argument('--de_norm', default=True, help='de normalize or not')
 
     # training
     parser.add_argument('--n_epochs', type=int, default=100)
     parser.add_argument('--lr', type=float, default=2e-4)
     parser.add_argument('--early_stop', type=int, default=30)
     parser.add_argument('--smooth_steps', type=int, default=5)
-    parser.add_argument('--metric', default='IC')
+    parser.add_argument('--metric', default='Rank_IC')
     parser.add_argument('--loss', default='mse')
     parser.add_argument('--repeat', type=int, default=5)
 
@@ -472,25 +354,25 @@ def parse_args():
     parser.add_argument('--batch_size', type=int, default=-1)  # -1 indicate daily batch
     parser.add_argument('--least_samples_num', type=float, default=1137.0) 
     parser.add_argument('--label', default='')  # specify other labels
-    parser.add_argument('--train_start_date', default='2019-01-01')
-    parser.add_argument('--train_end_date', default='2020-12-31')
-    parser.add_argument('--valid_start_date', default='2019-01-01')
-    parser.add_argument('--valid_end_date', default='2020-12-31')
-    parser.add_argument('--test_start_date', default='2021-01-01')
-    parser.add_argument('--test_end_date', default='2021-12-31')
+    parser.add_argument('--train_start_date', default='2021-01-01')
+    parser.add_argument('--train_end_date', default='2022-12-31')
+    parser.add_argument('--valid_start_date', default='2023-01-01')
+    parser.add_argument('--valid_end_date', default='2023-06-30')
+    parser.add_argument('--test_start_date', default='2023-07-01')
+    parser.add_argument('--test_end_date', default='2024-03-01')
 
     # other
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--annot', default='')
     parser.add_argument('--config', action=ParseConfigFile, default='')
-    parser.add_argument('--name', type=str, default='RSR')
+    parser.add_argument('--name', type=str, default='event_embedding_model')
 
     # input for csi 300
     parser.add_argument('--market_value_path', default='./data/csi300_market_value_07to22.pkl')
-    parser.add_argument('--stock2concept_matrix', default='./data/csi300_stock2concept.npy')
     parser.add_argument('--stock2stock_matrix', default='./data/csi300_multi_stock2stock_all.npy')
+    parser.add_argument('--event_embedding_path', default='./data/csi300_event_embeddings.pkl')
     parser.add_argument('--stock_index', default='./data/csi300_stock_index.npy')
-    parser.add_argument('--outdir', default='./output/RSR_all')
+    parser.add_argument('--outdir', default='./output/event_embedding_model')
     parser.add_argument('--overwrite', action='store_true', default=False)
     parser.add_argument('--device', default='cuda:1')
     args = parser.parse_args()

@@ -128,9 +128,9 @@ class DataLoader:
                 .lt(lengths.unsqueeze(1)))
 
 
-class DataLoader_v2:
+class DataLoader_ee:
 
-    def __init__(self, df_feature, df_label, df_market_value, df_factor, df_stock_index, batch_size=800,
+    def __init__(self, df_feature, df_label, df_market_value, df_embedding, df_stock_index, batch_size=800,
                  pin_memory=True, start_index=0, device=None):
 
         assert len(df_feature) == len(df_label)
@@ -138,7 +138,7 @@ class DataLoader_v2:
         self.df_feature = df_feature.values
         self.df_label = df_label.values
         self.df_market_value = df_market_value
-        self.df_factor = df_factor.values
+        self.df_embedding = df_embedding.values
         self.df_stock_index = df_stock_index
         self.device = device
 
@@ -147,7 +147,7 @@ class DataLoader_v2:
             self.df_label = torch.tensor(self.df_label, dtype=torch.float, device=device)
             self.df_market_value = torch.tensor(self.df_market_value, dtype=torch.float, device=device)
             self.df_stock_index = torch.tensor(self.df_stock_index, dtype=torch.long, device=device)
-            self.df_factor = torch.tensor(self.df_factor, dtype=torch.float32, device=device)
+            self.df_embedding = torch.tensor(self.df_embedding, dtype=torch.float, device=device)
 
         self.index = df_label.index
 
@@ -206,85 +206,7 @@ class DataLoader_v2:
 
     def get(self, slc):
         outs = self.df_feature[slc], self.df_label[slc][:, 0], self.df_market_value[slc], \
-               self.df_factor[slc], self.df_stock_index[slc]
-        # outs = self.df_feature[slc], self.df_label[slc]
-
-        if not self.pin_memory:
-            outs = tuple(torch.tensor(x, device=self.device) for x in outs)
-
-        return outs + (self.index[slc],)
-
-
-class DataLoader_v3:
-
-    def __init__(self, df_feature, df_label, batch_size=800, pin_memory=True, device=None):
-
-        assert len(df_feature) == len(df_label)
-
-        self.df_feature = df_feature.values
-        self.df_label = df_label.values
-        self.device = device
-
-        if pin_memory:
-            self.df_feature = torch.tensor(self.df_feature, dtype=torch.float, device=device)
-            self.df_label = torch.tensor(self.df_label, dtype=torch.float, device=device)
-
-        self.batch_size = batch_size
-        self.pin_memory = pin_memory
-        self.index = df_label.index
-
-        self.daily_count = df_label.groupby(level=0).size().values
-        self.daily_index = np.roll(np.cumsum(self.daily_count), 1)
-        self.daily_index[0] = 0
-
-    @property
-    def batch_length(self):
-
-        if self.batch_size <= 0:
-            # this is the default situation
-            return self.daily_length
-
-        return len(self.df_label) // self.batch_size
-
-    @property
-    def daily_length(self):
-        """
-        :return:  number of days in the dataloader
-        """
-        return len(self.daily_count)
-
-    def iter_batch(self):
-        if self.batch_size <= 0:
-            yield from self.iter_daily_shuffle()
-            return
-
-        indices = np.arange(len(self.df_label))
-        np.random.shuffle(indices)
-
-        for i in range(len(indices))[::self.batch_size]:
-            if len(indices) - i < self.batch_size:
-                break
-            yield i, indices[i:i + self.batch_size]  # NOTE: advanced indexing will cause copy
-
-    def iter_daily_shuffle(self):
-        indices = np.arange(len(self.daily_count))
-        np.random.shuffle(indices)
-        for i in indices:
-            yield i, slice(self.daily_index[i], self.daily_index[i] + self.daily_count[i])
-
-    def iter_daily(self):
-        """
-        : yield an index and a slice, that from the day
-        """
-        indices = np.arange(len(self.daily_count))
-        for i in indices:
-            yield i, slice(self.daily_index[i], self.daily_index[i] + self.daily_count[i])
-        # for idx, count in zip(self.daily_index, self.daily_count):
-        #     yield slice(idx, idx + count) # NOTE: slice index will not cause copy
-
-    def get(self, slc):
-        # now get only output two items
-        outs = self.df_feature[slc], self.df_label[slc][:, 0]
+               self.df_embedding[slc], self.df_stock_index[slc]
         # outs = self.df_feature[slc], self.df_label[slc]
 
         if not self.pin_memory:
@@ -416,6 +338,104 @@ def create_loaders(args, device):
     else:
         test_loader = DataLoader(df_test["feature"], df_test["label"], df_test['market_value'],
                                  df_test['stock_index'],pin_memory=True, start_index=start_index, device=device)
+
+    return train_loader, valid_loader, test_loader
+
+
+def create_event_loaders(args, device):
+    """
+    load qlib alpha360 data and split into train, validation and test loader
+    :param args:
+    :return:
+    """
+    start_time = datetime.datetime.strptime(args.train_start_date, '%Y-%m-%d')
+    end_time = datetime.datetime.strptime(args.test_end_date, '%Y-%m-%d')
+    train_end_time = datetime.datetime.strptime(args.train_end_date, '%Y-%m-%d')
+
+    """
+    Ref($close, -2) / Ref($close, -1) - 1
+    or
+    Ref($close, -1) / $close - 1
+    """
+    handler = {'class': 'Alpha360', 'module_path': 'qlib.contrib.data.handler',
+            'kwargs': {'start_time': start_time, 'end_time': end_time, 'fit_start_time': start_time,
+                        'fit_end_time': train_end_time, 'instruments': args.data_set, 'infer_processors': [
+                    {'class': 'RobustZScoreNorm', 'kwargs': {'fields_group': 'feature', 'clip_outlier': True}},
+                    {'class': 'Fillna', 'kwargs': {'fields_group': 'feature'}}],
+                        'learn_processors': [{'class': 'DropnaLabel'},
+                                            {'class': 'CSRankNorm', 'kwargs': {'fields_group': 'label'}}],
+                        'label': ['Ref($close, -2) / Ref($close, -1) - 1']}}
+
+    segments = {'train': (args.train_start_date, args.train_end_date),
+                'valid': (args.valid_start_date, args.valid_end_date),
+                'test': (args.test_start_date, args.test_end_date)}
+    # get dataset from qlib
+    dataset = DatasetH(handler, segments)
+    df_train, df_valid, df_test = dataset.prepare(["train", "valid", "test"],
+                                                      col_set=["feature", "label"],data_key=DataHandlerLP.DK_L, )
+    # split those three dataset into train, valid and test
+    # import pickle5 as pickle
+    import pickle
+    with open(args.market_value_path, "rb") as fh:
+        df_market_value = pickle.load(fh)
+    df_market_value = df_market_value / 1000000000
+    stock_index = np.load(args.stock_index, allow_pickle=True).item()
+    with open(args.event_embedding_path,"rb") as fh:
+        event_embedding = pickle.load(fh)
+
+
+    start_index = 0
+    slc = slice(pd.Timestamp(args.train_start_date), pd.Timestamp(args.train_end_date))
+    df_train['market_value'] = df_market_value[slc]
+    df_train['market_value'] = df_train['market_value'].fillna(df_train['market_value'].mean())
+    df_train['stock_index'] = 733
+    df_train['stock_index'] = df_train.index.get_level_values('instrument').map(stock_index).fillna(733).astype(int)
+
+    df_train['event_embedding'] = event_embedding['embeddings'][slc]
+    train_average = df_train['event_embedding'].mean()
+    df_train['event_embedding'] = df_train['event_embedding'].apply(lambda x: x if isinstance(x, np.ndarray) else train_average)
+    # df_train['event_embedding'] = df_train['event_embedding'].fillna(df_train['event_embedding'].mean())
+    train_embedding = df_train['event_embedding'].apply(pd.Series)
+    train_embedding.columns = pd.MultiIndex.from_tuples([('embedding', str(i)) for i in range(768)])
+
+    train_loader = DataLoader_ee(df_train["feature"], df_train["label"], df_train['market_value'],
+                                 train_embedding['embedding'], df_train['stock_index'],
+                                 batch_size=args.batch_size, pin_memory=args.pin_memory, start_index=start_index,
+                                 device=device)
+
+    slc = slice(pd.Timestamp(args.valid_start_date), pd.Timestamp(args.valid_end_date))
+    df_valid['market_value'] = df_market_value[slc]
+    df_valid['market_value'] = df_valid['market_value'].fillna(df_train['market_value'].mean())
+    df_valid['stock_index'] = 733
+    df_valid['stock_index'] = df_valid.index.get_level_values('instrument').map(stock_index).fillna(733).astype(int)
+
+    df_valid['event_embedding'] = event_embedding['embeddings'][slc]
+    valid_average = df_valid['event_embedding'].mean()
+    df_valid['event_embedding'] = df_valid['event_embedding'].apply(lambda x: x if isinstance(x, np.ndarray) else valid_average)
+    # df_valid['event_embedding'] = df_valid['event_embedding'].fillna(df_valid['event_embedding'].mean())
+    valid_embedding = df_valid['event_embedding'].apply(pd.Series)
+    valid_embedding.columns = pd.MultiIndex.from_tuples([('embedding', str(i)) for i in range(768)])
+
+    start_index += len(df_valid.groupby(level=0).size())
+    valid_loader = DataLoader_ee(df_valid["feature"], df_valid["label"], df_valid['market_value'],
+                                 valid_embedding['embedding'], df_valid['stock_index'],
+                                 pin_memory=True, start_index=start_index, device=device)
+
+    slc = slice(pd.Timestamp(args.test_start_date), pd.Timestamp(args.test_end_date))
+    df_test['market_value'] = df_market_value[slc]
+    df_test['market_value'] = df_test['market_value'].fillna(df_train['market_value'].mean())
+    df_test['stock_index'] = 733
+    df_test['stock_index'] = df_test.index.get_level_values('instrument').map(stock_index).fillna(733).astype(int)
+
+    df_test['event_embedding'] = event_embedding['embeddings'][slc]
+    test_average = df_test['event_embedding'].mean()
+    df_test['event_embedding'] = df_test['event_embedding'].apply(lambda x: x if isinstance(x, np.ndarray) else test_average)
+    test_embedding = df_test['event_embedding'].apply(pd.Series)
+    test_embedding.columns = pd.MultiIndex.from_tuples([('embedding', str(i)) for i in range(768)])
+    start_index += len(df_test.groupby(level=0).size())
+    test_loader = DataLoader_ee(df_test["feature"], df_test["label"], df_test['market_value'],
+                                test_embedding['embedding'], df_test['stock_index'],
+                                pin_memory=True, start_index=start_index, device=device)
 
     return train_loader, valid_loader, test_loader
 
