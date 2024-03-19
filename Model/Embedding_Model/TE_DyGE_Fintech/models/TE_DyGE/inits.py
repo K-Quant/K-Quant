@@ -25,3 +25,4 @@ def ones(shape, name=None):
     """All ones."""
     initial = tf.ones(shape, dtype=tf.float32)
     return tf.Variable(initial, name=name)
+# update 2024-03-19 14:19:43
