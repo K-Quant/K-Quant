@@ -49,7 +49,7 @@ KEnhance
 ```
 #### 2.1.1 Run experiments
     python learn.py --model_name [model you choose] --outdir 'output/[folder your named]'
-#### 2.2.2 Results
+#### 2.1.2 Results
 The result will be stored in output folder, if you need some well-trained models, we provide in [this link](https://drive.google.com/file/d/1yGHXZDcCgY4AAp_UM_gKXyKo25Atmoft/view?usp=sharing)
 
 [//]: # (### Knowledge choice)
