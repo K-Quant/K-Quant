@@ -129,3 +129,4 @@ class Decoder(nn.Module):
         final_predict = rearrange(final_predict, 'b (out_d seg_num) seg_len -> b (seg_num seg_len) out_d', out_d=ts_d)
 
         return final_predict
+# update 2024-03-19 14:31:50
