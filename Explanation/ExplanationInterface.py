@@ -71,7 +71,7 @@ def parse_args():
 
     parser.add_argument('--stock_index', default='D:\Research\Fintech\K-Quant\Data\csi300_stock_index.npy')
     parser.add_argument('--model_dir', default='D:\Research\Fintech\K-Quant\parameter')
-    parser.add_argument('--events_files', default='D:\Research\Fintech\K-Quant\Data\event_data.json')
+    parser.add_argument('--events_files', default='D:\Research\Fintech\K-Quant\Data\event_data2022.json')
 
     parser.add_argument('--overwrite', action='store_true', default=False)
     parser.add_argument('--device', default='cpu')
@@ -357,8 +357,8 @@ def get_results(args, start_date, end_date, explainer, check_stock_list, check_d
 
 if __name__ == '__main__':
     args = parse_args()
-    args.start_date = '2022-12-01'
-    args.end_date = '2022-12-03'
+    args.start_date = '2022-01-10'
+    args.end_date = '2022-01-11'
     args.stock_list = ['SH600383']
     args.model_name = 'NRSR'
     events_files = args.events_files
