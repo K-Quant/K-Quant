@@ -1,4 +1,5 @@
 import json
+from multiprocessing import Pool
 
 from Explanation.utils import *
 from Explanation.SJsrc import *
@@ -137,14 +138,15 @@ def load_params(args):
     param_args = argparse.Namespace(**param_dict)
     return param_args
 
-def run_input_gradient_explanation(args):
+
+def run_input_gradient_explanation(args, event_data):
     param_args = load_params(args)
     if not args.explainer == 'inputGradientExplainer':
         return None
     data_loader = create_data_loaders(args)
     explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
     exp_result_dict = explanation.explain()
-    exp_result_dict = check_all_relative_stock(args, exp_result_dict)
+    exp_result_dict = check_all_relative_stock(args, exp_result_dict, event_data)
 
     return exp_result_dict, explanation
 
@@ -183,16 +185,15 @@ def get_events(date, num_days, stock_id, event_data):
     converted_stock_id = convert_stock_code(stock_id)
     previous_days = get_previous_days(date, num_days)
     events = {}
+
     if converted_stock_id in event_data.keys():
         have_event_dates = [d for d in event_data[converted_stock_id].keys() if d in previous_days]
         for d in have_event_dates:
             events[d] = event_data[converted_stock_id][d]
-
         return events
 
     else:
         return {}
-
 
 
 def search_stocks_prediction_explanation(args, exp_result_dict, event_data):
@@ -221,6 +222,7 @@ def run_xpath_explanation(args, get_fidelity=False, top_k=3):
                                          top_k=top_k, relation_list=_relation_name_list)
     return res
 
+
 def run_gnn_explainer(args, top_k=3):
     param_args = load_params(args)
     data_loader = create_data_loaders(args)
@@ -242,7 +244,7 @@ def run_hencex_explainer(args, top_k=3):
     return res
 
 
-def check_all_relative_stock(args, exp_result_dict):
+def check_all_relative_stock(args, exp_result_dict, event_data):
     _stock_index = np.load(args.stock_index, allow_pickle=True).item()
     with open(args.relation_name_list_file, 'r') as json_file:
         _relation_name_list = json.load(json_file)
@@ -283,7 +285,8 @@ def check_all_relative_stock(args, exp_result_dict):
                 other_stock_id = entry['relative_stock_id']
                 relative_stocks_dict[date][stock_id][other_stock_id] = {
                     'total_score': entry['total_score'],
-                    'individual_scores': entry['individual_scores']
+                    'individual_scores': entry['individual_scores'],
+                    'events': get_events(date, args.seq_len, other_stock_id, event_data)
                 }
 
     return relative_stocks_dict
@@ -356,6 +359,12 @@ def get_results(args, start_date, end_date, explainer, check_stock_list, check_d
 
 
 if __name__ == '__main__':
+    #
+    # pool = Pool(10)
+    #
+    #
+    # processed_n_data = pool.map(tensorize_with_label, zip(smiles, labels))
+
     args = parse_args()
     args.start_date = '2022-01-10'
     args.end_date = '2022-01-11'
@@ -368,8 +377,7 @@ if __name__ == '__main__':
 
     # for inputGradient:
     args.explainer = 'inputGradientExplainer'
-    exp_result_dict, explanation = run_input_gradient_explanation(args)
-    exp_result_dict = search_stocks_prediction_explanation(args, exp_result_dict, events_data)
+    exp_result_dict, explanation = run_input_gradient_explanation(args, events_data)
     # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
     print(exp_result_dict)
 
