@@ -81,7 +81,7 @@ class HIST(nn.Module):
         cos_similarity[cos_similarity != cos_similarity] = 0
         return cos_similarity
 
-    def forward(self, x, concept_matrix, market_value):
+    def forward(self, x, concept_matrix, market_value=None):
         # N = the number of stock in current slice
         # F = feature length
         # T = number of days, usually = 60, since F*T should be 360
@@ -95,12 +95,14 @@ class HIST(nn.Module):
         # get the last layer embeddings
 
         # Predefined Concept Module
-
-        market_value_matrix = market_value.reshape(market_value.shape[0], 1).repeat(1, concept_matrix.shape[1])
-        # make the market value matrix the same size as the concept matrix by repeat
-        # market value matrix shape: (N, number of pre define concepts)
-        stock_to_concept = concept_matrix * market_value_matrix
-        # torch.sum generate (1, number of pre define concepts) -> repeat (N, number of predefine concepts)
+        if market_value is not None:
+            market_value_matrix = market_value.reshape(market_value.shape[0], 1).repeat(1, concept_matrix.shape[1])
+            # make the market value matrix the same size as the concept matrix by repeat
+            # market value matrix shape: (N, number of pre define concepts)
+            stock_to_concept = concept_matrix * market_value_matrix
+        else:
+            stock_to_concept = concept_matrix
+            # torch.sum generate (1, number of pre define concepts) -> repeat (N, number of predefine concepts)
         # 对应每个concept 得到其相关所有股票市值的和, sum在哪个维度上操作，哪个维度被压缩成1
         stock_to_concept_sum = torch.sum(stock_to_concept, 0).reshape(1, -1).repeat(stock_to_concept.shape[0], 1)
         # mul得到结果 （N，number of predefine concepts），每个股票对应的概念不再是0或1，而是0或其相关股票市值之和
@@ -718,20 +720,19 @@ class KEnhance(nn.Module):
         self.base_model = base_model
         self.num_layers = num_layers
         self.dropout = dropout
-        names = self.__dict__
         for i in range(head_num):
-            names['rnn_' + str(i)] = nn.GRU(
+            self.add_module('rnn_' + str(i), nn.GRU(
                 input_size=d_feat,
                 hidden_size=hidden_size,
                 num_layers=num_layers,
                 batch_first=True,
                 dropout=dropout,
-            )
-            names['W_' + str(i)] = torch.nn.Parameter(torch.randn((hidden_size * 2), 1))
-            names['W_' + str(i)].require_grad = True
-            torch.nn.init.xavier_uniform_(names['W_' + str(i)])
-            names['b_' + str(i)] = torch.nn.Parameter(torch.tensor(0, dtype=torch.float))
-            names['b_' + str(i)].requires_grad = True
+            ))
+            self.register_parameter('W_' + str(i), torch.nn.Parameter(torch.randn((hidden_size * 2), 1)))
+            self.__getattr__('W_' + str(i)).require_grad = True
+            torch.nn.init.xavier_uniform_(self.__getattr__('W_' + str(i)))
+            self.register_parameter('b_' + str(i), torch.nn.Parameter(torch.tensor(0, dtype=torch.float)))
+            self.__getattr__('b_' + str(i)).requires_grad = True
 
         # self.rnn = nn.GRU(
         #     input_size=d_feat,
@@ -799,9 +800,9 @@ class KEnhance(nn.Module):
         self.att_net.add_module("att_softmax", nn.Softmax(dim=1))
 
     def build_att_tensor(self, x, raw, index):
-        name = self.__dict__
-        gru = name['rnn_' + str(index)].to(x.device)
-        g_hidden, _ = gru(raw)
+        # name = self.__dict__
+        # gru = name['rnn_' + str(index)].to(x.device)
+        g_hidden, _ = self.__getattr__('rnn_' + str(index))(raw)
         f = g_hidden[:, -1, :]
         N = len(x)
         eye = torch.eye(N, N, device=f.device)
@@ -809,9 +810,9 @@ class KEnhance(nn.Module):
         ei = x.unsqueeze(1).repeat(1, N, 1)  # shape N,N,64
         hidden_batch = x.unsqueeze(0).repeat(N, 1, 1)  # shape N,N,64
         matrix = torch.cat((ei, hidden_batch), 2)  # matrix shape N,N,128
-        W = name['W_' + str(index)].to(x.device)
-        b = name['b_' + str(index)].to(x.device)
-        weight = (torch.matmul(matrix, W) + b).squeeze(2)
+        # W = name['W_' + str(index)].to(x.device)
+        # b = name['b_' + str(index)].to(x.device)
+        weight = (torch.matmul(matrix, self.__getattr__('W_' + str(index))) + self.__getattr__('b_' + str(index))).squeeze(2)
         weight = self.leaky_relu(weight)  # relu layer
         # valid_weight = g * weight
         index = torch.t((g == 0).nonzero())

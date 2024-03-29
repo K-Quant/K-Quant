@@ -14,11 +14,12 @@ import os.path
 from tqdm import tqdm
 import time
 import sys
+
 # sys.path.insert(0, sys.path[0]+"/../")
 DIRNAME = Path(__file__).absolute().resolve().parent
 sys.path.insert(0, str(DIRNAME.parent))
 sys.path.insert(0, str(DIRNAME.parent.parent))
-from models.model import MLP, GRU, LSTM, GAT, ALSTM, SFM
+from model_pool.models.model import MLP, GRU, LSTM, GAT, ALSTM, SFM, RSR, HIST, KEnhance
 from model_pool.utils.dataloader import create_doubleadapt_loaders
 from pprint import pprint
 from typing import Optional, Dict, Union, List
@@ -29,32 +30,34 @@ import yaml
 import json
 import numpy as np
 
+from model_pool.exp.learn import relation_model_dict
 
 from models.DoubleAdapt_model.model import IncrementalManager, DoubleAdaptManager
 from models.DoubleAdapt_model import utils
 
+from learn import get_model
 
-def get_model(model_name):
-    if model_name.upper() == 'MLP':
-        return MLP
-    if model_name.upper() == 'LSTM':
-        return LSTM
-    if model_name.upper() == 'GRU':
-        return GRU
-    if model_name.upper() == 'GATS':
-        return GAT
-    if model_name.upper() == 'SFM':
-        return SFM
-    if model_name.upper() == 'ALSTM':
-        return ALSTM
-    raise ValueError('unknown model name `%s`' % model_name)
+# def get_model(model_name):
+#     if model_name.upper() == 'MLP':
+#         return MLP
+#     if model_name.upper() == 'LSTM':
+#         return LSTM
+#     if model_name.upper() == 'GRU':
+#         return GRU
+#     if model_name.upper() == 'GATS':
+#         return GAT
+#     if model_name.upper() == 'SFM':
+#         return SFM
+#     if model_name.upper() == 'ALSTM':
+#         return ALSTM
+#     if model_name.upper() == 'RSR':
+#         return RSR
+#     if model_name.upper() == 'HIST':
+#         return HIST
+#     if model_name.upper() == 'KEnhance':
+#         return KEnhance
+#     raise ValueError('unknown model name `%s`' % model_name)
 
-# # For now, we do not support relation_model
-# relation_model_dict = [
-#     'RSR',
-#     'relation_GATs',
-#     'relation_GATs_3heads'
-# ]
 
 class IncrementalExp:
     """
@@ -97,6 +100,8 @@ class IncrementalExp:
             rank_label=False,
             h_path=None,
             skip_valid_epoch=5,
+            relation_path=None,
+            stock_index_path=None,
     ):
         """
         Args:
@@ -208,7 +213,8 @@ class IncrementalExp:
                                 self.ta.align_time(self.segments[k][1], tp_type='end'))
 
         # self.test_slice = slice(self.ta.align_time(test_start, tp_type='start'), self.ta.align_time(test_end, tp_type='end'))
-        self.test_slice = slice(self.ta.align_time(self.segments['test'][0], tp_type='start'), self.ta.align_time(self.segments['test'][1], tp_type='end'))
+        self.test_slice = slice(self.ta.align_time(self.segments['test'][0], tp_type='start'),
+                                self.ta.align_time(self.segments['test'][1], tp_type='end'))
         self.early_stop = args.early_stop
         self.h_path = h_path
         self.preprocess_tensor = preprocess_tensor
@@ -218,6 +224,10 @@ class IncrementalExp:
         self.x_dim = x_dim if x_dim else (360 if self.alpha == 360 else 20 * 20)
         # print('Experiment name:', self.experiment_name)
 
+        self.relation_matrix = torch.tensor(np.load(relation_path), dtype=torch.float32) if relation_path else None
+        self.stock_index_table = np.load(stock_index_path, allow_pickle=True).item() if stock_index_path else None
+        self.day_by_day = False
+
     @property
     def experiment_name(self):
         return f"{self.market}_{self.model_name}_alpha{self.alpha}_horizon{self.horizon}_step{self.step}" \
@@ -226,8 +236,6 @@ class IncrementalExp:
     def _init_model(self, args):
         param_dict = json.load(open(args.model_path + '/info.json'))['config']
         param_dict['model_dir'] = args.model_path
-        stock2concept_matrix = param_dict['stock2concept_matrix']
-        stock2stock_matrix = param_dict['stock2stock_matrix']
 
         print('load model ', param_dict['model_name'])
         if param_dict['model_name'] == 'SFM':
@@ -240,18 +248,21 @@ class IncrementalExp:
         elif param_dict['model_name'] == 'Transformer':
             model = get_model(param_dict['model_name'])(param_dict['d_feat'], param_dict['hidden_size'],
                                                         param_dict['num_layers'], dropout=0.5)
-        # elif param_dict['model_name'] == 'HIST':
-        #     # HIST need stock2concept matrix, send it to device
-        #     model = get_model(param_dict['model_name'])(d_feat=param_dict['d_feat'], num_layers=param_dict['num_layers']
-        #                                                 , K=param_dict['K'])
-        # elif param_dict['model_name'] in relation_model_dict:
-        #     stock2stock_matrix = torch.Tensor(np.load(stock2stock_matrix)).to(args.device)
-        #     num_relation = stock2stock_matrix.shape[2]  # the number of relations
-        #     model = get_model(param_dict['model_name'])(num_relation=num_relation, d_feat=param_dict['d_feat'],
-        #                                                 num_layers=param_dict['num_layers'])
+        elif param_dict['model_name'] == 'HIST':
+            model = get_model(param_dict['model_name'])(d_feat=param_dict['d_feat'], num_layers=param_dict['num_layers']
+                                                        , K=param_dict['K'])
+            self.day_by_day = True
+        elif param_dict['model_name'] in relation_model_dict:
+            num_relation = self.relation_matrix.shape[2]  # the number of relations
+            model = get_model(param_dict['model_name'])(num_relation=num_relation, d_feat=param_dict['d_feat'],
+                                                        num_layers=param_dict['num_layers'])
+            self.day_by_day = True
         else:
             model = get_model(param_dict['model_name'])(d_feat=param_dict['d_feat'],
                                                         num_layers=param_dict['num_layers'])
+
+        if param_dict['model_name'] == 'GAT':
+            self.day_by_day = True
 
         model.to(args.device)
         # model.load_state_dict(torch.load(param_dict['model_dir'] + '/model.bin', map_location=args.device))
@@ -265,7 +276,10 @@ class IncrementalExp:
 
         if self.naive:
             framework = IncrementalManager(model, x_dim=self.x_dim, lr_model=self.lr,
-                                           begin_valid_epoch=0, over_patience=self.early_stop)
+                                           begin_valid_epoch=0, over_patience=self.early_stop,
+                                           day_by_day=self.day_by_day,
+                                           stock_index_table=self.stock_index_table,
+                                           relation_matrix=self.relation_matrix)
         else:
             print("DoubleAdaptManager")
             framework = DoubleAdaptManager(model, x_dim=self.x_dim, lr_model=self.lr, weight_decay=self.weight_decay,
@@ -274,7 +288,10 @@ class IncrementalExp:
                                            lr_da=self.lr_da, lr_ma=self.lr_ma, online_lr=self.online_lr,
                                            lr_x=self.lr_x, lr_y=self.lr_y, over_patience=self.early_stop,
                                            adapt_x=self.adapt_x, adapt_y=self.adapt_y, reg=self.reg,
-                                           num_head=self.num_head, temperature=self.temperature)
+                                           num_head=self.num_head, temperature=self.temperature,
+                                           day_by_day=self.day_by_day,
+                                           stock_index_table=self.stock_index_table,
+                                           relation_matrix=self.relation_matrix)
         if reload_path is not None and os.path.exists(reload_path):
             framework.load_state_dict(torch.load(reload_path))
             print('Reload experiment', reload_path)
@@ -289,7 +306,8 @@ class IncrementalExp:
                                                      rtype=utils.TimeAdjuster.SHIFT_SD, use_extra=self.use_extra)
             rolling_tasks = {}
             rolling_tasks['train'], rolling_tasks['valid'] = utils.split_rolling_tasks(all_rolling_tasks,
-                                                                                       split_point=segments['train'][-1])
+                                                                                       split_point=segments['train'][
+                                                                                           -1])
             rolling_tasks_data = {k: utils.get_rolling_data(rolling_tasks[k],
                                                             # data=self._load_data() if data is None else data,
                                                             data=data,
@@ -342,7 +360,6 @@ class IncrementalExp:
                     pred = model(X_test)
                     pred = pred.view(-1)
 
-
             test_begin = len(meta_input["y_extra"]) if "y_extra" in meta_input else 0
             output = pred[test_begin:].detach().cpu().numpy()
 
@@ -387,19 +404,27 @@ class IncrementalExp:
                 the col named 'label' contains the ground-truth labels which have been preprocessed and may not be the raw.
         """
         if framework is None:
-            model = self._init_model()
+            model = self._init_model(args)
             model.to(args.device)
             if self.naive:
                 framework = IncrementalManager(model, x_dim=self.x_dim, lr_model=self.lr,
                                                online_lr=self.online_lr, weight_decay=self.weight_decay,
-                                               first_order=True, alpha=self.alpha, begin_valid_epoch=0)
+                                               first_order=True, alpha=self.alpha, begin_valid_epoch=0,
+                                               day_by_day=self.day_by_day,
+                                               stock_index_table=self.stock_index_table,
+                                               relation_matrix=self.relation_matrix)
             else:
-                framework = DoubleAdaptManager(model, x_dim=self.x_dim, lr_model=self.lr, weight_decay=self.weight_decay,
-                                               first_order=self.first_order, begin_valid_epoch=0, factor_num=self.factor_num,
+                framework = DoubleAdaptManager(model, x_dim=self.x_dim, lr_model=self.lr,
+                                               weight_decay=self.weight_decay,
+                                               first_order=self.first_order, begin_valid_epoch=0,
+                                               factor_num=self.factor_num,
                                                lr_da=self.lr_da, lr_ma=self.lr_ma, online_lr=self.online_lr,
                                                lr_x=self.lr_x, lr_y=self.lr_y,
                                                adapt_x=self.adapt_x, adapt_y=self.adapt_y, reg=self.reg,
-                                               num_head=self.num_head, temperature=self.temperature)
+                                               num_head=self.num_head, temperature=self.temperature,
+                                               day_by_day=self.day_by_day,
+                                               stock_index_table=self.stock_index_table,
+                                               relation_matrix=self.relation_matrix)
             if reload_path is not None:
                 framework.load_state_dict(torch.load(reload_path))
                 print('Reload experiment', reload_path)
@@ -412,8 +437,8 @@ class IncrementalExp:
         # rolling_tasks = utils.organize_all_tasks(segments, self.ta, step=self.step, trunc_days=self.horizon + 1,
         #                                          rtype=utils.TimeAdjuster.SHIFT_SD, use_extra=self.use_extra)
         rolling_tasks = utils.organize_tasks(segments['valid'][0], segments['test'][-1], self.ta, self.step,
-                                                 trunc_days=self.horizon + 1,
-                                                 rtype=utils.TimeAdjuster.SHIFT_SD, use_extra=self.use_extra)
+                                             trunc_days=self.horizon + 1,
+                                             rtype=utils.TimeAdjuster.SHIFT_SD, use_extra=self.use_extra)
         rolling_tasks_data = utils.get_rolling_data(rolling_tasks,
                                                     # data=self._load_data() if data is None else data,
                                                     data=data,
@@ -477,7 +502,7 @@ class IncrementalExp:
         data = ds.prepare(['train'], col_set=["feature", "label"], data_key=DataHandlerLP.DK_L, )[0]
 
         pred_y_all_incre = self.online_training(data=data, framework=framework, args=args,
-                                                                  reload_path=reload_path)
+                                                reload_path=reload_path)
 
         label_all = ds.prepare(segments="train", col_set="label", data_key=DataHandlerLP.DK_R)
         label_all = label_all.loc(axis=0)[self.test_slice].dropna(axis=0)
@@ -486,7 +511,6 @@ class IncrementalExp:
         if not os.path.exists(args.result_path):
             os.makedirs(args.result_path)
         pd.to_pickle(pred_y_all_incre, os.path.join(args.result_path, f"{args.model_name}_DoubleAdapt_{args.step}.pkl"))
-
 
 
 def str_to_bool(value):
@@ -498,9 +522,10 @@ def str_to_bool(value):
         return True
     raise ValueError(f'{value} is not a valid boolean value')
 
+
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device', default='cuda:0')
+    parser.add_argument('--device', default='cuda')
     # parser.add_argument('--device', default='cpu')
     parser.add_argument('--model_name', default='GRU')
     parser.add_argument('--rank_label', type=str_to_bool, default=True)
@@ -513,8 +538,7 @@ def parse_args():
     parser.add_argument('--early_stop', type=int, default=10)
     parser.add_argument('--skip_valid_epoch', type=int, default=10)
     parser.add_argument('--step', type=int, default=20)
-    parser.add_argument('--reload_path', default="./output/INCRE/",
-                        help='None: without reloading; str: path for loading')
+    parser.add_argument('--reload', type=str_to_bool, default=False)
     parser.add_argument('--result_path', default="./pred_output/")
     parser.add_argument('--model_path', default='./output/', help='learned model')
     parser.add_argument('--model_save_path', default="./output/INCRE/", help='updated model')
@@ -523,8 +547,13 @@ def parse_args():
     parser.add_argument('--incre_train_end', default='2019-12-31')  # work time 2012 1231
     parser.add_argument('--incre_val_start', default='2020-01-01')  # work time 2013 0101
     parser.add_argument('--incre_val_end', default='2022-12-31')  # work time 2013 1231
-    parser.add_argument('--test_start', default='2022-06-01')  # work time 2014 0101
+    parser.add_argument('--test_start', default='2021-01-01')  # work time 2014 0101
     parser.add_argument('--test_end', default='2023-06-30')  # work time 2014 1231
+
+    # input for csi 300
+    parser.add_argument('--stock2concept_matrix', default='../data/csi300_stock2concept.npy')
+    parser.add_argument('--stock2stock_matrix', default='../data/csi300_multi_stock2stock_hidy_2023.npy')
+    parser.add_argument('--stock_index', default='../data/csi300_stock_index.npy')
 
     args = parser.parse_args()
 
@@ -538,11 +567,13 @@ def parse_args():
         for k, v in args.online_lr.items():
             online_lr_str += f'_online_{k}_{v}'
     checkpoint_name = f'{args.model_name}_DoubleAdapt_step{args.step}_lr{args.lr}_ma{args.lr_ma}_da{args.lr_da}{online_lr_str}.bin'
-    args.reload_path = os.path.join(args.model_save_path, checkpoint_name)
-    args.reload_path = None
+
+    args.reload_path = os.path.join(args.model_save_path, checkpoint_name) if args.reload else None
 
     # if args.rank_label:
     #     args.adapt_y = False
+    if args.model_name in ['GRU', 'LSTM', 'ALSTM', 'SFM']:
+        args.stock2concept_matrix = None
     return args
 
 
@@ -554,12 +585,14 @@ def setup_seed(seed):
     # torch.backends.cudnn.benchmark=False
     # torch.backends.cudnn.deterministic = True
 
+
 if __name__ == "__main__":
     args = parse_args()
     setup_seed(0)
     a = IncrementalExp(args=args, data_dir='crowd_data', rank_label=args.rank_label, adapt_y=args.adapt_y,
                        naive=args.naive, early_stop=args.early_stop, step=args.step,
                        skip_valid_epoch=args.skip_valid_epoch,
-                       lr=args.lr, lr_ma=args.lr_ma, lr_da=args.lr_da, online_lr=args.online_lr)
+                       lr=args.lr, lr_ma=args.lr_ma, lr_da=args.lr_da, online_lr=args.online_lr,
+                       relation_path=args.stock2concept_matrix if args.model_name == 'HIST' else args.stock2stock_matrix,
+                       stock_index_path=args.stock_index)
     a.workflow(args=args, reload_path=args.reload_path)
-

@@ -2,7 +2,7 @@ import torch
 import pandas as pd
 import numpy as np
 from sklearn.metrics import ndcg_score, accuracy_score, precision_score, f1_score, recall_score, roc_auc_score
-from torchmetrics import RetrievalNormalizedDCG
+# from torchmetrics import RetrievalNormalizedDCG
 
 
 def mse(pred, label):

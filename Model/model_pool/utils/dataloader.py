@@ -11,7 +11,7 @@ import sys
 
 # provider_uri = "~/.qlib/qlib_data/cn_data"  # target_dir
 # provider_uri = "../qlib_data/cn_data"  # target_dir
-provider_uri = "/Users/haowang/Desktop/project/stock_model/qlib_data/cn_data"
+provider_uri = "~/.qlib/qlib_data/crowd_data"
 qlib.init(provider_uri=provider_uri, region=REG_CN)
 from qlib.data.dataset import DatasetH
 from qlib.data.dataset.handler import DataHandlerLP
