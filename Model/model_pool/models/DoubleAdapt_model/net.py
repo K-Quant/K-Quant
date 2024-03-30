@@ -99,12 +99,12 @@ class ForecastModel(nn.Module):
         if self.device is not None:
             self.to(self.device)
 
-    def forward(self, X, model=None):
+    def forward(self, X, *args, model=None):
         if model is None:
             model = self.model
         if X.dim() == 3:
             X = X.permute(0, 2, 1).reshape(len(X), -1) if self.need_permute else X.reshape(len(X), -1)
-        y_hat = model(X)
+        y_hat = model(*((X, ) + args))
         y_hat = y_hat.view(-1)
         return y_hat
 
@@ -123,8 +123,8 @@ class DoubleAdapt(ForecastModel):
         if self.device is not None:
             self.to(self.device)
 
-    def forward(self, X, model=None, transform=False):
+    def forward(self, X, *args, model=None, transform=False):
         if transform:
             X = self.teacher_x(X)
-        return super().forward(X, model), X
+        return super().forward(X, *args, model=model), X
 

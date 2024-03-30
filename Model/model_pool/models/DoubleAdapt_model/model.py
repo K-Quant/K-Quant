@@ -29,6 +29,7 @@ class IncrementalManager:
         need_permute (bool): whether to permute the last two dimensions of time-series input, specially for Alpha360.
         over_patience (int): the patience for early stop.
         begin_valid_epoch (int): which epoch to begin validation. Set a moderate one to reduce training time.
+        day_by_day (bool): do daily inference instead of the whole batch
     """
     def __init__(
         self,
@@ -39,6 +40,9 @@ class IncrementalManager:
         need_permute: bool = True,
         over_patience: int = 8,
         begin_valid_epoch: int = 0,
+        day_by_day: bool = False,
+        relation_matrix: np.ndarray = None,
+        stock_index_table = None,
         **kwargs
     ):
         self.fitted = False
@@ -48,6 +52,9 @@ class IncrementalManager:
         self.begin_valid_epoch = begin_valid_epoch
         self.framework = self._init_framework(model, x_dim, lr_model, need_permute=need_permute, **kwargs)
         self.opt = self._init_meta_optimizer(**kwargs)
+        self.day_by_day = day_by_day
+        self.relation_matrix = relation_matrix.to(self.framework.device)
+        self.stock_index_table = stock_index_table
 
     def _init_framework(self, model: nn.Module, x_dim: int = None, lr_model=0.001,
                         weight_decay=0.0, need_permute=False, **kwargs):
@@ -152,7 +159,7 @@ class IncrementalManager:
                     k: torch.tensor(v, device=self.framework.device, dtype=torch.float32) if 'idx' not in k else v
                     for k, v in meta_input.items()
                 }
-            pred = self._run_task(meta_input, phase)
+            pred = (self._run_task_by_day if self.day_by_day else self._run_task)(meta_input, phase)
             if phase != "train":
                 test_idx = meta_input["test_idx"]
                 pred_y_all.append(
@@ -176,14 +183,56 @@ class IncrementalManager:
     def _run_task(self, meta_input: Dict[str, Union[pd.Index, torch.Tensor]], phase: str):
         """ A single naive incremental learning task """
         self.framework.opt.zero_grad()
-        y_hat = self.framework(meta_input["X_train"].to(self.framework.device), None)
+        y_hat = self.framework(meta_input["X_train"].to(self.framework.device), model=None)
         loss = self.framework.criterion(y_hat, meta_input["y_train"].to(self.framework.device))
         loss.backward()
         self.framework.opt.step()
         self.framework.opt.zero_grad()
         with torch.no_grad():
-            pred = self.framework(meta_input["X_test"].to(self.framework.device), None)
+            pred = self.framework(meta_input["X_test"].to(self.framework.device), model=None)
         return pred.detach().cpu().numpy()
+
+    def _run_task_by_day(self, meta_input: Dict[str, Union[pd.Index, torch.Tensor]], phase: str):
+        """ A single naive incremental learning task """
+        self.framework.opt.zero_grad()
+        loss, idx = 0, 0
+        X_train = meta_input["X_train"].to(self.framework.device)
+        y_train = meta_input["y_train"].to(self.framework.device)
+        daynum_train = meta_input['train_idx'].to_frame()['datetime'].groupby(level=0).count()
+        stock_code = meta_input['train_idx'].get_level_values('instrument')
+        for daynum in daynum_train:
+            if self.relation_matrix is not None:
+                stock_index = stock_code[idx: idx + daynum].map(self.stock_index_table).fillna(733)
+                relation = self.relation_matrix[stock_index]
+                if self.relation_matrix.shape[0] == self.relation_matrix.shape[1]:
+                    relation = relation[:, stock_index]
+                y_hat = self.framework(X_train[idx: idx + daynum], relation.to(self.framework.device), model=None)
+            else:
+                y_hat = self.framework(X_train[idx: idx + daynum], model=None)
+            loss += self.framework.criterion(y_hat, y_train[idx: idx + daynum]) * daynum
+            idx += daynum
+        (loss / idx).backward()
+        self.framework.opt.step()
+        self.framework.opt.zero_grad()
+
+        X_test = meta_input["X_test"].to(self.framework.device)
+        daynum_test = meta_input['test_idx'].to_frame()['datetime'].groupby(level=0).count()
+        stock_code = meta_input['test_idx'].get_level_values('instrument')
+        with torch.no_grad():
+            preds = []
+            idx = 0
+            for daynum in daynum_test:
+                if self.relation_matrix is not None:
+                    stock_index = stock_code[idx: idx + daynum].map(self.stock_index_table).fillna(733)
+                    relation = self.relation_matrix[stock_index]
+                    if self.relation_matrix.shape[0] == self.relation_matrix.shape[1]:
+                        relation = relation[:, stock_index]
+                    pred = self.framework(X_test[idx: idx + daynum], relation.to(self.framework.device), model=None)
+                else:
+                    pred = self.framework(X_test[idx: idx + daynum], model=None)
+                preds.append(pred.detach().cpu())
+                idx += daynum
+        return torch.cat(preds, 0).numpy()
 
     def inference(self, meta_tasks_test: List[Dict[str, Union[pd.DataFrame, np.ndarray, torch.Tensor]]],
                   date_slice: slice = slice(None, None)):
@@ -228,6 +277,7 @@ class DoubleAdaptManager(IncrementalManager):
         num_head (int): number of adaptation heads
         temperature (float): softmax temperature
         begin_valid_epoch (int): which epoch to begin validation. Set a moderate one to reduce training time.
+        day_by_day (bool): do daily inference instead of the whole batch
     """
     def __init__(
         self,
@@ -250,12 +300,16 @@ class DoubleAdaptManager(IncrementalManager):
         temperature: float = 10,
         over_patience: int = 8,
         begin_valid_epoch: int = 0,
+        day_by_day: bool = False,
+        relation_matrix: np.ndarray = None,
+        stock_index_table = None,
     ):
         super(DoubleAdaptManager, self).__init__(model, x_dim=x_dim, lr_model=lr_model, lr_ma=lr_ma, lr_da=lr_da,
                                                  lr_x=lr_x, lr_y=lr_y, online_lr=online_lr, weight_decay=weight_decay,
                                                  need_permute=need_permute, over_patience=over_patience,
                                                  factor_num=factor_num, temperature=temperature, num_head=num_head,
-                                                 begin_valid_epoch=begin_valid_epoch)
+                                                 begin_valid_epoch=begin_valid_epoch, day_by_day=day_by_day,
+                                                 relation_matrix=relation_matrix, stock_index_table=stock_index_table)
         self.adapt_x = adapt_x
         self.adapt_y = adapt_y
         self.reg = reg
@@ -363,6 +417,99 @@ class DoubleAdaptManager(IncrementalManager):
                 loss_y = (loss_old.item() - loss.item()) / self.sigma * loss_y + loss_y * self.reg
             else:
                 loss_y = loss_y * self.reg
+            loss_y.backward()
+        loss.backward()
+        if self.adapt_x or self.adapt_y:
+            self.opt.step()
+        self.framework.opt.step()
+        return output
+
+    def _run_task_by_day(self, meta_input: Dict[str, Union[pd.Index, torch.Tensor]], phase: str):
+
+        self.framework.opt.zero_grad()
+        self.opt.zero_grad()
+
+        """ Incremental data adaptation & Model adaptation """
+        X = meta_input["X_train"].to(self.framework.device)
+        y = meta_input["y_train"].to(self.framework.device)
+        if self.adapt_y:
+            raw_y = y
+            y = self.framework.teacher_y(X, raw_y, inverse=False)
+        y_hats = []
+        daynum_train = meta_input['train_idx'].to_frame()['datetime'].groupby(level=0).count()
+        stock_code = meta_input['train_idx'].get_level_values('instrument')
+        with higher.innerloop_ctx(
+            self.framework.model,
+            self.framework.opt,
+            copy_initial_weights=False,
+            track_higher_grads=not self.first_order,
+            override={'lr': [self.lr_model]}
+        ) as (fmodel, diffopt):
+            with torch.backends.cudnn.flags(enabled=self.first_order or not self.has_rnn):
+                idx, daynum = 0, 0
+                for daynum in daynum_train:
+                    if self.relation_matrix is not None:
+                        stock_index = stock_code[idx: idx + daynum].map(self.stock_index_table).fillna(733)
+                        relation = self.relation_matrix[stock_index]
+                        if self.relation_matrix.shape[0] == self.relation_matrix.shape[1]:
+                            relation = relation[:, stock_index]
+                        y_hat, _ = self.framework(X[idx: idx + daynum],
+                                               relation.to(self.framework.device),
+                                               model=fmodel, transform=self.adapt_x)
+                    else:
+                        y_hat, _ = self.framework(X[idx: idx + daynum], model=fmodel, transform=self.adapt_x)
+                    y_hats.append(y_hat)
+                    idx += daynum
+
+            loss2 = self.framework.criterion(torch.cat(y_hats, 0), y)
+            diffopt.step(loss2)
+
+        """ Online inference """
+        if phase != "train" and "X_extra" in meta_input and meta_input["X_extra"].shape[0] > 0:
+            X_test = torch.cat([meta_input["X_extra"].to(self.framework.device), meta_input["X_test"].to(self.framework.device), ], 0, )
+            y_test = torch.cat([meta_input["y_extra"].to(self.framework.device), meta_input["y_test"].to(self.framework.device), ], 0, )
+        else:
+            X_test = meta_input["X_test"].to(self.framework.device)
+            y_test = meta_input["y_test"].to(self.framework.device)
+
+        daynum_test = meta_input['test_idx'].to_frame()['datetime'].groupby(level=0).count()
+        stock_code = meta_input['test_idx'].get_level_values('instrument')
+        preds = []
+        idx = 0
+        for daynum in daynum_test:
+            if self.relation_matrix is not None:
+                stock_index = stock_code[idx: idx + daynum].map(self.stock_index_table).fillna(733)
+                relation = self.relation_matrix[stock_index]
+                if self.relation_matrix.shape[0] == self.relation_matrix.shape[1]:
+                    relation = relation[:, stock_index]
+                pred, _ = self.framework(X_test[idx: idx + daynum], relation.to(self.framework.device),
+                                         model=fmodel, transform=self.adapt_x)
+            else:
+                pred, _ = self.framework(X_test[idx: idx + daynum], model=fmodel, transform=self.adapt_x)
+            preds.append(pred)
+            idx += daynum
+        pred = torch.cat(preds)
+        if self.adapt_y:
+            pred = self.framework.teacher_y(X_test, pred, inverse=True)
+        if phase != "train":
+            test_begin = len(meta_input["y_extra"]) if "y_extra" in meta_input else 0
+            meta_end = test_begin + meta_input["meta_end"]
+            output = pred[test_begin:].detach().cpu().numpy()
+            pred = pred[:meta_end]
+            y_test = y_test[:meta_end]
+            mask_y = meta_input.get("mask_y")
+            if mask_y is not None:
+                pred = pred[mask_y[:meta_end]]
+                y_test = y_test[mask_y[:meta_end]]
+        else:
+            output = pred.detach().cpu().numpy()
+
+        """ Optimization of meta-learners """
+        loss = self.framework.criterion(pred, y_test)
+        if self.adapt_y:
+            if not self.first_order:
+                y = self.framework.teacher_y(X, raw_y, inverse=False)
+            loss_y = F.mse_loss(y, raw_y) * self.reg
             loss_y.backward()
         loss.backward()
         if self.adapt_x or self.adapt_y:
