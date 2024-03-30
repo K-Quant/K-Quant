@@ -208,6 +208,7 @@ class IncrementalExp:
             'valid': (args.incre_val_start, args.incre_val_end),
             'test': (args.test_start, args.test_end)
         }
+        print(self.segments)
         for k, v in self.segments.items():
             self.segments[k] = (self.ta.align_time(self.segments[k][0], tp_type='start'),
                                 self.ta.align_time(self.segments[k][1], tp_type='end'))
@@ -294,7 +295,7 @@ class IncrementalExp:
                                            relation_matrix=self.relation_matrix)
         if reload_path is not None and os.path.exists(reload_path):
             framework.load_state_dict(torch.load(reload_path))
-            print('Reload experiment', reload_path)
+            print('Reload checkpoint from', reload_path)
         else:
             if segments is None:
                 segments = self.segments
@@ -427,7 +428,7 @@ class IncrementalExp:
                                                relation_matrix=self.relation_matrix)
             if reload_path is not None:
                 framework.load_state_dict(torch.load(reload_path))
-                print('Reload experiment', reload_path)
+                print('Reload checkpoint from', reload_path)
         else:
             model = self._init_model(args)
             model.to(args.device)
@@ -499,8 +500,7 @@ class IncrementalExp:
 
         print("evaluation")
 
-        data = ds.prepare(['train'], col_set=["feature", "label"], data_key=DataHandlerLP.DK_L, )[0]
-
+        # data = ds.prepare(['train'], col_set=["feature", "label"], data_key=DataHandlerLP.DK_L, )[0]
         pred_y_all_incre = self.online_training(data=data, framework=framework, args=args,
                                                 reload_path=reload_path)
 
@@ -510,7 +510,12 @@ class IncrementalExp:
         # pred_y_all_basic = self._evaluate_metrics(pred_y_all_basic, "basic_model", label_all)
         if not os.path.exists(args.result_path):
             os.makedirs(args.result_path)
-        pd.to_pickle(pred_y_all_incre, os.path.join(args.result_path, f"{args.model_name}_DoubleAdapt_{args.step}.pkl"))
+        if args.reload:
+            pd.to_csv(pred_y_all_incre,
+                      os.path.join(args.result_path, f"DoubleAdapt_{args.model_name}_{args.year}Q{args.Q}_{args.test_end[6:]}.pkl"))
+        else:
+            pd.to_csv(pred_y_all_incre,
+                      os.path.join(args.result_path, f"DoubleAdapt_{args.model_name}_{args.year}Q{args.Q}.pkl"))
 
 
 def str_to_bool(value):
@@ -526,9 +531,8 @@ def str_to_bool(value):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', default='cuda')
-    # parser.add_argument('--device', default='cpu')
     parser.add_argument('--model_name', default='GRU')
-    parser.add_argument('--rank_label', type=str_to_bool, default=True)
+    parser.add_argument('--rank_label', type=str_to_bool, default=False)
     parser.add_argument('--naive', type=str_to_bool, default=False)
     parser.add_argument('--adapt_y', type=str_to_bool, default=True)
     parser.add_argument('--lr', type=float, default=0.001)
@@ -543,12 +547,14 @@ def parse_args():
     parser.add_argument('--model_path', default='./output/', help='learned model')
     parser.add_argument('--model_save_path', default="./output/INCRE/", help='updated model')
     parser.add_argument('--root_path', default='~/.qlib/qlib_data', help='')
-    parser.add_argument('--incre_train_start', default='2008-01-01')  # work time 2012 0101
-    parser.add_argument('--incre_train_end', default='2019-12-31')  # work time 2012 1231
-    parser.add_argument('--incre_val_start', default='2020-01-01')  # work time 2013 0101
-    parser.add_argument('--incre_val_end', default='2022-12-31')  # work time 2013 1231
-    parser.add_argument('--test_start', default='2021-01-01')  # work time 2014 0101
-    parser.add_argument('--test_end', default='2023-06-30')  # work time 2014 1231
+    parser.add_argument('--incre_train_start', default='2008-01-01')
+    parser.add_argument('--incre_train_end', default='2019-12-31')
+    parser.add_argument('--incre_val_start', default='2020-01-01')
+    parser.add_argument('--incre_val_end', default='2022-12-31')
+    parser.add_argument('--test_start', default='2021-01-01')
+    parser.add_argument('--test_end', default='2023-06-30')
+    parser.add_argument('--year', type=str, default=None)
+    parser.add_argument('--Q', type=int, default=None)
 
     # input for csi 300
     parser.add_argument('--stock2concept_matrix', default='../data/csi300_stock2concept.npy')
@@ -556,6 +562,18 @@ def parse_args():
     parser.add_argument('--stock_index', default='../data/csi300_stock_index.npy')
 
     args = parser.parse_args()
+
+    retrain_segs = [('01-01', '03-31'), ('04-01', '06-30'), ('07-01', '09-30'), ('10-01', '12-31')]
+    if args.Q is None:
+        args.Q = (int(args.test_start[6:8]) - 1) // 3 + 1
+    elif not args.reload and args.year is not None:
+        args.test_start = f'{args.year}-{retrain_segs[args.Q][0]}'
+        args.test_end = f'{args.year}-{retrain_segs[args.Q][1]}'
+        args.incre_val_start = f'{args.year - args.Q == 1}-{retrain_segs[(args.Q - 1) % 4][0]}'
+        args.incre_val_end = f'{args.year - args.Q == 1}-{retrain_segs[(args.Q - 1) % 4][1]}'
+        args.incre_train_end = f'{args.year - args.Q <= 2}-{retrain_segs[(args.Q - 2) % 4][1]}'
+    if args.year is None:
+        args.year = int(args.test_start[:4])
 
     if args.online_lr is not None:
         args.online_lr = eval(args.online_lr)
@@ -566,13 +584,20 @@ def parse_args():
     if args.online_lr is not None:
         for k, v in args.online_lr.items():
             online_lr_str += f'_online_{k}_{v}'
-    checkpoint_name = f'{args.model_name}_DoubleAdapt_step{args.step}_lr{args.lr}_ma{args.lr_ma}_da{args.lr_da}{online_lr_str}.bin'
+    checkpoint_name = f'{args.model_name}_DoubleAdapt_step{args.step}_{args.year}Q{args.Q}_lr{args.lr}_ma{args.lr_ma}_da{args.lr_da}{online_lr_str}.bin'
 
     args.reload_path = os.path.join(args.model_save_path, checkpoint_name) if args.reload else None
 
+    if args.reload:
+        if os.path.exists(args.reload_path):
+            raise Exception(f"Need retraining! No checkpoint for DoubleAdapt {args.year}Q{args.Q}")
+        else:
+            args.incre_val_start = f'{args.year - args.Q == 1}-{retrain_segs[(args.Q - 1) % 4][0]}'
+            args.incre_val_end = f'{args.year - args.Q == 1}-{retrain_segs[(args.Q - 1) % 4][1]}'
+
     # if args.rank_label:
     #     args.adapt_y = False
-    if args.model_name in ['GRU', 'LSTM', 'ALSTM', 'SFM']:
+    if args.model_name in ['GRU', 'LSTM', 'ALSTM', 'SFM', 'MLP']:
         args.stock2concept_matrix = None
     return args
 
