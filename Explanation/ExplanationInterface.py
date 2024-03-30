@@ -146,9 +146,9 @@ def run_input_gradient_explanation(args, event_data):
     data_loader = create_data_loaders(args)
     explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
     exp_result_dict = explanation.explain()
-    exp_result_dict = check_all_relative_stock(args, exp_result_dict, event_data)
+    exp_result_dict, sorted_stock_rank = check_all_relative_stock(args, exp_result_dict, event_data)
 
-    return exp_result_dict, explanation
+    return exp_result_dict, sorted_stock_rank, explanation
 
 
 def get_previous_days(start_date, n):
@@ -251,10 +251,13 @@ def check_all_relative_stock(args, exp_result_dict, event_data):
     index_to_stock_id = {index: stock_id for stock_id, index in _stock_index.items()}
 
     relative_stocks_dict = {}
+    stock_rank = {}
     for date in exp_result_dict.keys():
+        pred = exp_result_dict[date]['pred']
         exp_graph = exp_result_dict[date]['expl_graph']
         stock_index_in_adj = exp_result_dict[date]['stock_index_in_adj']
         relative_stocks_dict[date] = {}
+        stock_rank[date] = {}
 
         num_stocks, _, num_relations = exp_graph.shape
 
@@ -262,7 +265,9 @@ def check_all_relative_stock(args, exp_result_dict, event_data):
             stock_id = index_to_stock_id[stock_index_in_adj[i]]  # 获取股票编号
             relative_stocks_dict[date][stock_id] = {}
             related_stocks = []
-
+            pred_result = pred[i]
+            stock_rank[date][stock_id] = pred_result
+            relative_stocks_dict[date][stock_id]['pred_result'] = pred_result
             for j in range(num_stocks):
                 other_stock_id = index_to_stock_id[stock_index_in_adj[j]]
                 scores = exp_graph[i, j, :]
@@ -288,8 +293,9 @@ def check_all_relative_stock(args, exp_result_dict, event_data):
                     'individual_scores': entry['individual_scores'],
                     'events': get_events(date, args.seq_len, other_stock_id, event_data)
                 }
-
-    return relative_stocks_dict
+        stock_rank[date] = dict(sorted(stock_rank[date].items(), key=lambda item: item[1], reverse=True))
+        stock_rank[date] = stock_rank[date].keys()
+    return relative_stocks_dict, stock_rank
 
 
 def evaluate_fidelity(explanation, exp_result_dict, p=0.2):
@@ -377,7 +383,7 @@ if __name__ == '__main__':
 
     # for inputGradient:
     args.explainer = 'inputGradientExplainer'
-    exp_result_dict, explanation = run_input_gradient_explanation(args, events_data)
+    exp_result_dict, sorted_stock_rank, explanation = run_input_gradient_explanation(args, events_data)
     # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
     print(exp_result_dict)
 

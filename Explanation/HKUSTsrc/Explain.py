@@ -114,8 +114,10 @@ class Explanation:
             feature, label, market_value, stock_index, index = data_loader.get(slc)
             date = datetime.datetime.date(index[0][0])
             graph = self.graph_data[stock_index][:, stock_index]
+            pred = self.pred_model(feature, graph)
             expl_graph = self.explainer.run_explain(feature, graph)
-            exp_result_dict[str(date)] = {'expl_graph': expl_graph.detach().numpy(),
+            exp_result_dict[str(date)] = {'pred': pred.detach().numpy(),
+                                          'expl_graph': expl_graph.detach().numpy(),
                                           'origin_graph': graph.detach().numpy(),
                                           'feature': feature.detach().numpy(),
                                           'stock_index_in_adj': stock_index.detach().numpy()}
