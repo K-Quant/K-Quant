@@ -511,11 +511,11 @@ class IncrementalExp:
         if not os.path.exists(args.result_path):
             os.makedirs(args.result_path)
         if args.reload:
-            pd.to_csv(pred_y_all_incre,
-                      os.path.join(args.result_path, f"DoubleAdapt_{args.model_name}_{args.year}Q{args.Q}_{args.test_end[6:]}.pkl"))
+            pd.to_pickle(pred_y_all_incre,
+                         os.path.join(args.result_path, f"DoubleAdapt_{args.model_name}_{args.year}Q{args.Q}_{args.test_end[6:]}.pkl"))
         else:
-            pd.to_csv(pred_y_all_incre,
-                      os.path.join(args.result_path, f"DoubleAdapt_{args.model_name}_{args.year}Q{args.Q}.pkl"))
+            pd.to_pickle(pred_y_all_incre,
+                         os.path.join(args.result_path, f"DoubleAdapt_{args.model_name}_{args.year}Q{args.Q}.pkl"))
 
 
 def str_to_bool(value):
