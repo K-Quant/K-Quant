@@ -336,15 +336,14 @@ def sim_linear(data, model_pool, lookback=30, eva_type='ic', select_num=5):
 
 
 def main(args, device):
-    # model_pool = ['GRU', 'LSTM', 'GATs', 'MLP', 'ALSTM', 'SFM']
-    model_pool = ['RSR_hidy_is', 'KEnhance', 'LSTM', 'GRU', 'GATs', 'MLP', 'ALSTM', 'SFM', 'HIST']
+    model_pool = args.model_list
+    # model_pool = ['RSR_hidy_is', 'KEnhance', 'LSTM', 'GRU', 'GATs', 'MLP', 'ALSTM', 'SFM', 'HIST']
     output = batch_prediction(args, model_pool, device)
     output, report = average_and_blend(args, output, model_pool)
     output, report = sjtu_ensemble(args, output, model_pool)
     output, report = sim_linear(output, model_pool)
-    # pd.to_pickle(output, 'pred_output/all_in_one_incre.pkl')
+    pd.to_pickle(output, args.saved_file)
     print(output.head())
-    # print(report)
 
 
 def parse_args():
@@ -362,12 +361,17 @@ def parse_args():
     parser.add_argument('--incremental_mode', default=False, help='load incremental updated models or not')
     parser.add_argument('--prefix', default='output/')
     parser.add_argument('--incre_prefix', default='output/for_platform/INCRE/')
+    parser.add_argument('--saved_file', default='pred_output/all_in_one.pkl')
+    parser.add_argument('--model_list', default=['RSR_hidy_is', 'KEnhance', 'LSTM', 'GRU', 'GATs', 'MLP', 'ALSTM', 'SFM', 'HIST'])
 
     args = parser.parse_args()
     return args
 
 
 if __name__ == '__main__':
+    """
+    after run this one, all single model, ensemble model result will be store in one pkl file
+    """
     args = parse_args()
     device = args.device if torch.cuda.is_available() else 'cpu'
     main(args, device)

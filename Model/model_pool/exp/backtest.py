@@ -5,7 +5,7 @@ from qlib.utils import flatten_dict
 from qlib.backtest import backtest, executor
 from qlib.contrib.evaluate import risk_analysis
 from qlib.contrib.strategy import TopkDropoutStrategy
-import matplotlib.pyplot as plt
+import argparse
 
 csi300_industry_map = {'农林牧渔': ['SZ002311', 'SZ300498', 'SZ002714'],
                        '基础化工': ['SH601216', 'SH600426', 'SH600989', 'SZ002601', 'SH600352', 'SH600309', 'SZ002064', 'SZ000408', 'SZ000792', 'SH603260'],
@@ -37,8 +37,11 @@ csi300_industry_map = {'农林牧渔': ['SZ002311', 'SZ300498', 'SZ002714'],
                        '美容护理': ['SH688363']
 }
 
+hot_industry = {'dianzi': '电子', 'yiyaoshengwu': '医药生物', 'yinhang': '银行', 'feiyinjinrong': '非银金融',
+                       'dianlishebei': '电力设备', 'jisuanji': '计算机'}
 
-def backtest_loop(data, model_name, EXECUTOR_CONFIG, backtest_config):
+
+def backtest_loop(data, model_name, EXECUTOR_CONFIG, backtest_config, top_k, n_drop):
     data = data[[model_name]]
     data.columns = [['score']]
     # init qlib
@@ -52,8 +55,8 @@ def backtest_loop(data, model_name, EXECUTOR_CONFIG, backtest_config):
 
     FREQ = "day"
     STRATEGY_CONFIG = {
-    "topk": 100,
-    "n_drop": 0,
+    "topk": top_k,
+    "n_drop": n_drop,
     # pred_score, pd.Series
     "signal": data,
     }
@@ -87,6 +90,9 @@ def backtest_loop(data, model_name, EXECUTOR_CONFIG, backtest_config):
 
 
 def backtest_fig(data, model_name, EXECUTOR_CONFIG, backtest_config,time):
+    """
+    this one is used to draw figure, but now we move it to front end
+    """
     data = data[[model_name]]
     data.columns = [['score']]
     # init qlib
@@ -117,20 +123,29 @@ def backtest_fig(data, model_name, EXECUTOR_CONFIG, backtest_config,time):
 
     draw_df = report_normal[['return', 'bench']]
     # draw_df.columns = [['Model cumulative return ', 'CSI300 benchmark cumulative return']]
-    target = draw_df.cumsum().plot(figsize=(16, 10))
-    plt.legend(['Model cumulative return', 'CSI300 benchmark cumulative return'], title='Model performance')
-    target.grid()
-    target = target.get_figure()
-    target.savefig('pred_output/plot_'+model_name+'_'+time+'.png')
+    # target = draw_df.cumsum().plot(figsize=(16, 10))
+    # plt.legend(['Model cumulative return', 'CSI300 benchmark cumulative return'], title='Model performance')
+    # target.grid()
+    # target = target.get_figure()
+    # target.savefig('pred_output/plot_'+model_name+'_'+time+'.png')
     # analysis
+    return None
 
-    return target
 
-
-def back_test_main():
-    data = pd.read_pickle('pred_output/all_in_one.pkl')
-    qlib.init(provider_uri="../qlib_data/cn_data")
+def back_test_main(args):
+    data = pd.read_pickle(args.predicted_file)
+    qlib.init(provider_uri=args.qlib_source)
     data = data.dropna()
+    slc = slice(pd.Timestamp(args.backtest_start_date), pd.Timestamp(args.backtest_end_date))
+    if args.industry_category != 'all':
+        try:
+            stock_list = csi300_industry_map[hot_industry[args.industry_category]]
+            data = data.loc[(slc, stock_list), :]
+            data = data.sort_index(level=0)
+        except:
+            print("wrong category key, return all stocks")
+            data = data[slc]
+
     CSI300_BENCH = "SH000300"
     EXECUTOR_CONFIG = {
         "time_per_step": "day",
@@ -138,8 +153,8 @@ def back_test_main():
     }
     FREQ = 'day'
     backtest_config = {
-        "start_time": "2023-04-01",
-        "end_time": "2023-06-30",
+        "start_time": args.backtest_start_date,
+        "end_time": args.backtest_end_date,
         "account": 100000000,
         "benchmark": CSI300_BENCH,  # "benchmark": NASDAQ_BENCH,
         "exchange_kwargs": {
@@ -151,13 +166,13 @@ def back_test_main():
             # 'close_cost': 0.0003,
             "min_cost": 5,
         }, }
-    model_pool = ['GRU','LSTM','GATs','MLP','ALSTM','HIST','ensemble_retrain','RSR_hidy_is','KEnhance','SFM',
-                  'ensemble_no_retrain', 'Perfomance_based_ensemble', 'average', 'blend', 'dynamic_ensemble']
-    # model_pool = ['GRU', 'LSTM', 'GATs', 'MLP', 'ALSTM', 'SFM']
+    model_pool_name = data.columns.tolist()
+    model_pool = [char for char in model_pool_name if char != 'label']
     pd_pool = []
     for model in model_pool:
-        symbol = model + '_score'
-        benchmark, er_wo_cost, er_w_cost = backtest_loop(data, symbol, EXECUTOR_CONFIG, backtest_config)
+        symbol = model
+        benchmark, er_wo_cost, er_w_cost = backtest_loop(data, symbol, EXECUTOR_CONFIG,
+                                                         backtest_config, args.topk, args.drop)
         er_w_cost.columns = [[model + '_with_cost']]
         # er_wo_cost.columns = [[model + '_without_cost']]
         benchmark.columns = [['benchmarks']]
@@ -169,7 +184,9 @@ def back_test_main():
             pd_pool.extend([er_w_cost])
     df = pd.concat(pd_pool, axis=1)
     df = df.T
-    df.to_pickle('pred_output/backtest_3_3.pkl')
+    df.to_pickle(args.backtest_file)
+
+    return None
 
 
 def draw_main():
@@ -204,6 +221,30 @@ def draw_main():
         print('fig saved')
 
 
+def parse_args():
+    """
+    deliver arguments from json file to program
+    :param param_dict: a dict that contains model info
+    :return: no return
+    """
+    parser = argparse.ArgumentParser()
+    # data
+    parser.add_argument('--backtest_start_date', default='2023-01-01')
+    parser.add_argument('--backtest_end_date', default='2023-06-30')
+    parser.add_argument('--device', default='cuda:1')
+    parser.add_argument('--predicted_file', default='pred_output/all_in_one_1.pkl')
+    parser.add_argument('--backtest_file', default='pred_output/backtest.pkl')
+    parser.add_argument('--qlib_source', default='../../../stock_model/qlib_data/cn_data')
+    parser.add_argument('--topk', default=10)
+    parser.add_argument('--drop', default=0)
+    parser.add_argument('--industry_category', default='all')
+
+
+    args = parser.parse_args()
+    return args
+
+
 if __name__ == "__main__":
-    # back_test_main()
-    draw_main()
+    args = parse_args()
+    back_test_main(args)
+    # draw_main()
