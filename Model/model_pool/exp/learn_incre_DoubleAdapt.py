@@ -479,7 +479,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--model_name', default='GRU')
-    parser.add_argument('--rank_label', type=str_to_bool, default=False)
+    parser.add_argument('--rank_label', type=str_to_bool, default=True)
     parser.add_argument('--naive', type=str_to_bool, default=False)
     parser.add_argument('--adapt_y', type=str_to_bool, default=True)
     parser.add_argument('--lr', type=float, default=0.001)
