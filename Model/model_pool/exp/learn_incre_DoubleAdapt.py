@@ -462,8 +462,7 @@ class IncrementalExp:
 
             year = int(args.test_start[:4])
             Q = (int(args.test_start[5:7]) - 1) // 3 + 1
-            pd.to_csv(pred_y_all_incre,
-                      os.path.join(args.result_path, f"DoubleAdapt_{args.model_name}_{year}Q{Q}.csv"))
+            pred_y_all_incre.to_csv(os.path.join(args.result_path, f"DoubleAdapt_{args.model_name}_{year}Q{Q}.csv"))
 
 
 def str_to_bool(value):
