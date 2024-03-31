@@ -263,7 +263,7 @@ class IncrementalExp:
             model = get_model(param_dict['model_name'])(d_feat=param_dict['d_feat'],
                                                         num_layers=param_dict['num_layers'])
 
-        if param_dict['model_name'] == 'GAT':
+        if isinstance(model, GAT):
             self.day_by_day = True
 
         model.to(args.device)
