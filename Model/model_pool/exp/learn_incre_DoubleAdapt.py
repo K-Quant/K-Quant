@@ -440,8 +440,8 @@ class IncrementalExp:
         data = ds.prepare(['train'], col_set=["feature", "label"], data_key=DataHandlerLP.DK_L, )[0]
 
         print(self.segments)
-        assert data.index[0][0] <= self.ta.align_time(self.segments['train'][0], tp_type='start')
-        assert data.index[-1][0] >= self.ta.align_time(self.segments['test'][-1], tp_type='end')
+        assert data.index[0][0] <= self.ta.align_time(self.segments['train'][0], tp_type='start'), print(data.index[0][0])
+        assert data.index[-1][0] >= self.ta.align_time(self.segments['test'][-1], tp_type='end'), print(data.index[-1][0])
         print("offline_training")
         framework = self.offline_training(args=args, data=data, reload_path=reload_path)
 
@@ -461,7 +461,7 @@ class IncrementalExp:
 
 
             year = int(args.test_start[:4])
-            Q = (int(args.test_start[6:8]) - 1) // 3 + 1
+            Q = (int(args.test_start[5:7]) - 1) // 3 + 1
             pd.to_csv(pred_y_all_incre,
                       os.path.join(args.result_path, f"DoubleAdapt_{args.model_name}_{year}Q{Q}.csv"))
 
@@ -559,8 +559,9 @@ def setup_seed(seed):
 
 if __name__ == "__main__":
     args = parse_args()
+    print(args)
     setup_seed(0)
-    a = IncrementalExp(args=args, data_dir='crowd_data', rank_label=args.rank_label, adapt_y=args.adapt_y,
+    a = IncrementalExp(args=args, data_dir='cn_data', rank_label=args.rank_label, adapt_y=args.adapt_y,
                        naive=args.naive, early_stop=args.early_stop, step=args.step,
                        skip_valid_epoch=args.skip_valid_epoch,
                        lr=args.lr, lr_ma=args.lr_ma, lr_da=args.lr_da, online_lr=args.online_lr,
