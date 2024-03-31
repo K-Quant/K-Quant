@@ -1,4 +1,5 @@
 import os.path
+import pathlib
 
 import torch
 import numpy as np
@@ -676,8 +677,9 @@ def create_doubleadapt_loaders(args, rank_label=True, save=True, reload=True):
             handler = f"file://{h_path}"
         else:
             for file in h_path.parent.iterdir():
-                if file.name[:-4] >= args.test_end:
+                if pd.Timestamp(file.name[:-4]) >= pd.Timestamp(args.test_end):
                     h_path = file.absolute()
+                    handler = f"file://{h_path}"
                 else:
                     os.remove(file.absolute())
     dataset = DatasetH(handler, segments)
