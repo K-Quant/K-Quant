@@ -490,7 +490,6 @@ def parse_args():
     parser.add_argument('--early_stop', type=int, default=10)
     parser.add_argument('--skip_valid_epoch', type=int, default=10)
     parser.add_argument('--step', type=int, default=20)
-    parser.add_argument('--reload', type=str_to_bool, default=False)
     parser.add_argument('--result_path', default="./pred_output/")
     parser.add_argument('--model_path', default='./output/', help='learned model')
     parser.add_argument('--model_save_path', default="./output/INCRE/", help='updated model')
@@ -501,6 +500,7 @@ def parse_args():
     parser.add_argument('--incre_val_end', default='2022-12-31')
     parser.add_argument('--test_start', default='2021-01-01')
     parser.add_argument('--test_end', default='2023-06-30')
+    parser.add_argument('--reload', action='store_true', default=False)
     parser.add_argument('--no_test', action='store_true', default=False)
 
     # input for csi 300
