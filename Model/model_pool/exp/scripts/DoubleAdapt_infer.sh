@@ -13,5 +13,5 @@ do
   --reload \
   --test_start 2024-04-01 \
   --test_end   2024-05-01 \
-  --skip_valid_epoch 10 >> logs/'DoubleAdapt_'$model_name'_2024Q1.log' 2>&1
+  --skip_valid_epoch 10 >> logs/'DoubleAdapt_'$model_name'_2024Q2.log' 2>&1
 done

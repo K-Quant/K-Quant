@@ -14,5 +14,5 @@ do
   --incre_val_start 2024-01-01 \
   --incre_val_end   2024-03-31 \
   --no_test \
-  --skip_valid_epoch 10 > logs/'DoubleAdapt_'$model_name'_2024Q1.log' 2>&1
+  --skip_valid_epoch 10 > logs/'DoubleAdapt_'$model_name'_2024Q2.log' 2>&1
 done

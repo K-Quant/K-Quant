@@ -15,7 +15,7 @@ do
   --incre_val_end   2023-03-31 \
   --test_start      2023-04-01 \
   --test_end        2023-06-30 \
-  --skip_valid_epoch 10 > logs/'DoubleAdapt_'$model_name'_2023Q1.log' 2>&1
+  --skip_valid_epoch 10 > logs/'DoubleAdapt_'$model_name'_2023Q2.log' 2>&1
 
   python -u learn_incre_DoubleAdapt.py --model_name $model_name \
   --lr 0.001 --lr_da 0.01 --step 5 --online_lr "{'lr_da': 0.001}" \
@@ -24,7 +24,7 @@ do
   --incre_val_end   2023-06-30 \
   --test_start      2023-07-01 \
   --test_end        2023-09-30 \
-  --skip_valid_epoch 10 > logs/'DoubleAdapt_'$model_name'_2023Q2.log' 2>&1
+  --skip_valid_epoch 10 > logs/'DoubleAdapt_'$model_name'_2023Q3.log' 2>&1
 
   python -u learn_incre_DoubleAdapt.py --model_name $model_name \
   --lr 0.001 --lr_da 0.01 --step 5 --online_lr "{'lr_da': 0.001}" \
@@ -33,7 +33,7 @@ do
   --incre_val_end   2023-09-30 \
   --test_start      2023-10-01 \
   --test_end        2023-12-31 \
-  --skip_valid_epoch 10 > logs/'DoubleAdapt_'$model_name'_2023Q3.log' 2>&1
+  --skip_valid_epoch 10 > logs/'DoubleAdapt_'$model_name'_2023Q4.log' 2>&1
 
   python -u learn_incre_DoubleAdapt.py --model_name $model_name \
   --lr 0.001 --lr_da 0.01 --step 5 --online_lr "{'lr_da': 0.001}" \
@@ -42,5 +42,5 @@ do
   --incre_val_end   2023-12-31 \
   --test_start      2024-01-01 \
   --test_end        2024-03-31 \
-  --skip_valid_epoch 10 > logs/'DoubleAdapt_'$model_name'_2023Q4.log' 2>&1
+  --skip_valid_epoch 10 > logs/'DoubleAdapt_'$model_name'_2024Q1.log' 2>&1
 done
