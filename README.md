@@ -9,6 +9,8 @@
 ## Overview
 In recent years, domain-specific knowledge bases (KBs) have attracted more attention in academics and industry because of their expertise and in-depth representation in a specific domain. However, when constructing a domain-specific KB, one needs to address not only the challenges in constructing a general KB, but also the difficulties raised by the nature of domain-specific raw data. Considering the usability of financial Knowledge Bases (KBs) in many downstream applications, such as financial risk analysis and fraud detection, we propose a Platform for Temporal Financial KB Construction, K-Quant Platform. 
 
+K-Quant system have three main components: Knowledge Module, Quantitative Investment Module, XAI Module.
+
 If you find this system helpful in your research, please consider citing our papers that are listed below:
 
 [1] **T-FinKB: A Platform of Temporal Financial Knowledge Base Construction.**
@@ -21,9 +23,20 @@ If you find this system helpful in your research, please consider citing our pap
 ![overview](logo/demo_overview.png)
 The main features of K-Quant:
 
-1. Dynamic Financial KB Construction
-2. Quantitive Investment Framework
-3. Evaluation and Interpretability Methods
+#### 1. Dynamic Financial KB Construction
+#### 2. Quantitative Investment Framework
+To handle temporal relations between companies and utilize the knowledge in quantitative investment, the K-Quant have three main functions in Quantitative Investment Framework:
+  1. Knowledge based stock recommendation models
+
+     We build knowledge based deep learning models for stock forecasting tasks. By extracting knowledge formed in KB construction module as relational matrix, we use them as an alternative data. For detailed models, please refer to [readme of stock prediction](Model/model_pool/README.md)
+  2. Stock recommendation ensemble models 
+
+     To boost the performance of stock recommendation, we employ ensemble methods to sample the output of different deep learning models. To better capture the rapid change of stock prices, we design several dynamic ensemble methods including **Online ensemble method based on resampling distribution estimation** and **dynamically heterogeneous ensemble methods**. Both of these two methods apply for patents.
+  3. Incremental learning methods for stock models
+
+     The complex stock market make deep learning model invalid soon because of the distribution shift. We propose incremental learning methods to mitigate the influence of such shift.
+
+#### 3. Evaluation and Interpretability Methods
 
 <!-- TOC -->
 
@@ -49,8 +62,23 @@ The main features of K-Quant:
 ### Prerequisites
 
 ### Installation
+For Quantitative Investment Framework, you need install [Microsoft Qlib](https://github.com/microsoft/qlib) 
+and download up-to-date stock time series data.
 
+We recommend install Qlib from source and download the crowd source stock data
+    
+```
+# install Qlib from source
+pip install --upgrade  cython
+git clone https://github.com/microsoft/qlib.git && cd qlib
+python setup.py install
+# Download the stock features of Alpha360 from Qlib
+# the target_dir is the same as provider_url in utils/dataloader.py
+python scripts/get_data.py qlib_data --target_dir ~/.qlib/qlib_data/cn_data --region cn --version v2    
+```
 ### Usage
+For detailed usage of quantitative forecasting model, please refer to 
+[Stock prediction module](Model/model_pool/README.md)
 
 ## Benchmark Dataset
 

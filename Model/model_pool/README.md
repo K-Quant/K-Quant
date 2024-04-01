@@ -3,12 +3,10 @@
 
 ## Introduction
 
-This repo is a part of K-Quant project, stock forecasting module.
-
 This module have 3 basic functions:
-### Module 2.1 knowledge based stock recommendation models
-### Module 2.2 stock recommendation ensemble models
-### Module 2.3 incremental learning methods for stock models
+#### Module 2.1 Knowledge based stock recommendation models
+#### Module 2.2 Stock recommendation ensemble models
+#### Module 2.3 Incremental learning methods for stock models
 
 ## Environment
 1. Install python3.8(recommend) 
