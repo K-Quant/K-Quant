@@ -58,16 +58,6 @@ class LabelAdapter(nn.Module):
         return (gate * self.heads(y, inverse=inverse)).sum(-1)
 
 
-class FiLM(nn.Module):
-    def __init__(self, in_dim):
-        super().__init__()
-        self.scale = nn.Parameter(torch.empty(in_dim))
-        nn.init.uniform_(self.scale, 0.75, 1.25)
-
-    def forward(self, x):
-        return x * self.scale
-
-
 class FeatureAdapter(nn.Module):
     def __init__(self, in_dim, num_head=4, temperature=4):
         super().__init__()
@@ -87,35 +77,36 @@ class FeatureAdapter(nn.Module):
 
 
 class ForecastModel(nn.Module):
-    def __init__(self, model: nn.Module, x_dim=None, lr=0.001, weight_decay=0, need_permute=False):
+    def __init__(self, model: nn.Module, x_dim=None, lr=0.001, need_permute=False, args=None):
         super().__init__()
         self.lr = lr
         # self.lr = task_config["model"]['kwargs']['lr']
         self.criterion = nn.MSELoss()
         self.model = model
-        self.device = torch.device("cuda")
+        # self.device = torch.device("cuda")
+        self.device = args.device
         self.need_permute = need_permute
-        self.opt = torch.optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=weight_decay)
+        self.opt = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         if self.device is not None:
             self.to(self.device)
 
-    def forward(self, X, *args, model=None):
+    def forward(self, X, model=None):
         if model is None:
             model = self.model
         if X.dim() == 3:
+            # print("self.need_permute", self.need_permute)
             X = X.permute(0, 2, 1).reshape(len(X), -1) if self.need_permute else X.reshape(len(X), -1)
-        y_hat = model(*((X, ) + args))
+        y_hat = model(X)
         y_hat = y_hat.view(-1)
         return y_hat
 
 
 class DoubleAdapt(ForecastModel):
     def __init__(
-        self, model, factor_num, x_dim=None, lr=0.001, weight_decay=0,
-            need_permute=False, num_head=8, temperature=10,
+        self, model, factor_num, x_dim=None, lr=0.001, need_permute=False, args = None, num_head=8, temperature=10,
     ):
         super().__init__(
-            model, x_dim=x_dim, lr=lr, need_permute=need_permute, weight_decay=weight_decay,
+            model, x_dim=x_dim, lr=lr, need_permute=need_permute, args = args
         )
         self.teacher_x = FeatureAdapter(factor_num, num_head, temperature)
         self.teacher_y = LabelAdapter(factor_num if x_dim is None else x_dim, num_head, temperature)
@@ -123,8 +114,8 @@ class DoubleAdapt(ForecastModel):
         if self.device is not None:
             self.to(self.device)
 
-    def forward(self, X, *args, model=None, transform=False):
+    def forward(self, X, model=None, transform=False):
         if transform:
             X = self.teacher_x(X)
-        return super().forward(X, *args, model=model), X
+        return super().forward(X, model), X
 

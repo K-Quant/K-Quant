@@ -3,6 +3,8 @@ classical single-step stock forecasting task
 follow HIST repo
 """
 import torch
+import pickle
+import shutil
 import torch.optim as optim
 import os
 import copy
@@ -16,25 +18,47 @@ import pandas as pd
 from torch.utils.tensorboard import SummaryWriter
 import sys
 sys.path.insert(0, sys.path[0]+"/../")
-from models.model import MLP, HIST, GRU, LSTM, GAT, ALSTM, SFM, RSR, relation_GATs, relation_GATs_3heads, KEnhance
+from models.model import MLP, HIST, GRU, LSTM, GAT, ALSTM, SFM, RSR, relation_GATs, relation_GATs_3heads, KEnhance, \
+    s2s_HIST
 from qlib.contrib.model.pytorch_transformer import Transformer
+from models.DLinear import DLinear_model
+from models.Autoformer import Model as autoformer
+from models.Crossformer import Model as crossformer
+from models.ETSformer import Model as ETSformer
+from models.FEDformer import Model as FEDformer
+from models.FiLM import Model as FiLM
+from models.Informer import Model as Informer
+from models.PatchTST import Model as PatchTST
 from utils.utils import metric_fn, mse
 from utils.dataloader import create_loaders
 import warnings
 import logging
+from types import NoneType
 
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
+# device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
 
 EPS = 1e-12
 warnings.filterwarnings('ignore')
+
+time_series_library = [
+    'DLinear',
+    'Autoformer',
+    'Crossformer',
+    'ETSformer',
+    'FEDformer',
+    'FiLM',
+    'Informer',
+    'PatchTST'
+]
 
 relation_model_dict = [
     'RSR',
     'relation_GATs',
     'relation_GATs_3heads',
-    'KEnhance'
+    'KEnhance',
+    's2s_HIST'
 ]
 
 
@@ -72,8 +96,38 @@ def get_model(model_name):
     if model_name.upper() == 'RELATION_GATS':
         return relation_GATs
 
+    if model_name.upper() == 'RELATION_GATS_3HEADS':
+        return relation_GATs_3heads
+
+    if model_name.upper() == 'DLINEAR':
+        return DLinear_model
+
+    if model_name.upper() == 'AUTOFORMER':
+        return autoformer
+
+    if model_name.upper() == 'CROSSFORMER':
+        return crossformer
+
+    if model_name.upper() == 'ETSFORMER':
+        return ETSformer
+
+    if model_name.upper() == 'FEDFORMER':
+        return FEDformer
+
+    if model_name.upper() == 'FILM':
+        return FiLM
+
+    if model_name.upper() == 'INFORMER':
+        return Informer
+
+    if model_name.upper() == 'PATCHTST':
+        return PatchTST
+
     if model_name.upper() == 'KENHANCE':
         return KEnhance
+
+    if model_name.upper() == 'S2S_HIST':
+        return s2s_HIST
 
     raise ValueError('unknown model name `%s`'%model_name)
 
@@ -150,7 +204,13 @@ def train_epoch(epoch, model, optimizer, train_loader, writer, args,
             # the stock2concept_matrix[stock_index] is a matrix, shape is (the number of stock index, predefined con)
             # the stock2concept_matrix has been sort to the order of stock index
         elif args.model_name in relation_model_dict:
-            pred = model(feature, stock2stock_matrix[stock_index][:, stock_index])
+            if args.model_name == 's2s_HIST':
+                pred = model(feature, stock2stock_matrix[stock_index][:, stock_index], market_value)
+            else:
+                pred = model(feature, stock2stock_matrix[stock_index][:, stock_index])
+        elif args.model_name in time_series_library:
+            # new added
+            pred = model(feature, mask)
         else:
             # other model only use feature as input
             pred = model(feature)
@@ -163,7 +223,7 @@ def train_epoch(epoch, model, optimizer, train_loader, writer, args,
         optimizer.step()
 
 
-def test_epoch(epoch, model, test_loader, writer, args, stock2concept_matrix=None, stock2stock_matrix=None, prefix='Test'):
+def test_epoch(epoch, model, test_loader, writer, args, stock2concept_matrix=None, stock2stock_matrix=None, prefix='Test', return_preds=False, preds=None):
     """
     :return: loss -> mse
              scores -> ic
@@ -172,29 +232,37 @@ def test_epoch(epoch, model, test_loader, writer, args, stock2concept_matrix=Non
     """
 
     model.eval()
+    if isinstance(preds, NoneType):
+        losses = []
+        preds = []
 
-    losses = []
-    preds = []
+        for i, slc in tqdm(test_loader.iter_daily(), desc=prefix, total=test_loader.daily_length):
 
-    for i, slc in tqdm(test_loader.iter_daily(), desc=prefix, total=test_loader.daily_length):
+            feature, label, market_value, stock_index, index, mask = test_loader.get(slc)
 
-        feature, label, market_value, stock_index, index, mask = test_loader.get(slc)
+            with torch.no_grad():
+                if args.model_name == 'HIST':
+                    pred = model(feature, stock2concept_matrix[stock_index], market_value)
+                elif args.model_name in relation_model_dict:
+                    if args.model_name == 's2s_HIST':
+                        pred = model(feature, stock2stock_matrix[stock_index][:, stock_index], market_value)
+                    else:
+                        pred = model(feature, stock2stock_matrix[stock_index][:, stock_index])
+                elif args.model_name in time_series_library:
+                    # new added
+                    pred = model(feature, mask)
+                else:
+                    pred = model(feature)
 
-        with torch.no_grad():
-            if args.model_name == 'HIST':
-                pred = model(feature, stock2concept_matrix[stock_index], market_value)
-            elif args.model_name in relation_model_dict:
-                pred = model(feature, stock2stock_matrix[stock_index][:, stock_index])
-            else:
-                pred = model(feature)
 
+                loss = loss_fn(pred, label)
+                preds.append(pd.DataFrame({'score': pred.cpu().numpy(), 'label': label.cpu().numpy(), }, index=index))
 
-            loss = loss_fn(pred, label)
-            preds.append(pd.DataFrame({'score': pred.cpu().numpy(), 'label': label.cpu().numpy(), }, index=index))
-
-        losses.append(loss.item())
-    # evaluate
-    preds = pd.concat(preds, axis=0)
+            losses.append(loss.item())
+        # evaluate
+        preds = pd.concat(preds, axis=0)
+        if return_preds:
+            return preds
     # use metric_fn to compute precision, recall, ic and rank ic
     precision, recall, ic, rank_ic, ndcg = metric_fn(preds)
 
@@ -203,16 +271,18 @@ def test_epoch(epoch, model, test_loader, writer, args, stock2concept_matrix=Non
     score is also very important, since it decide which model to choose 
     '''
     # scores = ic + ndcg[100] + precision[100]
-    scores = ic
+    scores = rank_ic
     # scores = (precision[3] + precision[5] + precision[10] + precision[30])/4.0
     # scores = -1.0 * mse
-
-    writer.add_scalar(prefix+'/Loss', np.mean(losses), epoch)
-    writer.add_scalar(prefix+'/std(Loss)', np.std(losses), epoch)
-    writer.add_scalar(prefix+'/'+args.metric, np.mean(scores), epoch)
-    writer.add_scalar(prefix+'/std('+args.metric+')', np.std(scores), epoch)
+    try:
+        writer.add_scalar(prefix+'/Loss', np.mean(losses), epoch)
+        writer.add_scalar(prefix+'/std(Loss)', np.std(losses), epoch)
+        writer.add_scalar(prefix+'/'+args.metric, np.mean(scores), epoch)
+        writer.add_scalar(prefix+'/std('+args.metric+')', np.std(scores), epoch)
+    except: losses = [0]
 
     return np.mean(losses), scores, precision, recall, ic, rank_ic, ndcg
+
 
 
 def inference(model, data_loader, stock2concept_matrix=None, stock2stock_matrix=None):
@@ -227,7 +297,13 @@ def inference(model, data_loader, stock2concept_matrix=None, stock2stock_matrix=
             if args.model_name == 'HIST':
                 pred = model(feature, stock2concept_matrix[stock_index], market_value)
             elif args.model_name in relation_model_dict:
-                pred = model(feature, stock2stock_matrix[stock_index][:, stock_index])
+                if args.model_name == 's2s_HIST':
+                    pred = model(feature, stock2stock_matrix[stock_index][:, stock_index], market_value)
+                else:
+                    pred = model(feature, stock2stock_matrix[stock_index][:, stock_index])
+            elif args.model_name in time_series_library:
+                # new added
+                pred = model(feature, mask)
             else:
                 pred = model(feature)
             preds.append(pd.DataFrame({'score': pred.cpu().numpy(), 'label': label.cpu().numpy(),}, index=index))
@@ -248,6 +324,8 @@ def main(args):
     output_path = args.outdir
     if not output_path:
         output_path = '../ouput/' + suffix
+    if os.path.exists(output_path):
+        shutil.rmtree(output_path)
     if not os.path.exists(output_path):
         os.makedirs(output_path)
 
@@ -261,7 +339,8 @@ def main(args):
     global_log_file = output_path + '/' + args.name + '_run.log'
 
     pprint('create loaders...')
-    train_loader, valid_loader, test_loader = create_loaders(args, device=device)
+    # train_loader, valid_loader, test_loader = create_loaders(args, device=device)
+    train_loaders, valid_loaders, test_loaders = create_loaders(args, device=device, finetune=True, n_split_test=args.n_split_test)
 
     stock2concept_matrix = np.load(args.stock2concept_matrix)
     stock2stock_matrix = np.load(args.stock2stock_matrix)
@@ -277,6 +356,7 @@ def main(args):
     all_ic = []
     all_rank_ic = []
     all_ndcg = []
+    global_best_score = -np.inf
     for times in range(args.repeat):
         pprint('create model...')
         if args.model_name == 'SFM':
@@ -289,115 +369,136 @@ def main(args):
             model = get_model(args.model_name)(d_feat=args.d_feat, num_layers=args.num_layers, K=args.K)
         elif args.model_name in relation_model_dict:
             model = get_model(args.model_name)(num_relation=num_relation, d_feat=args.d_feat, num_layers=args.num_layers)
+        elif args.model_name in time_series_library:
+            model = get_model(args.model_name)(args)
         else:
             model = get_model(args.model_name)(d_feat=args.d_feat, num_layers=args.num_layers)
         
         model.to(device)
 
-        optimizer = optim.Adam(model.parameters(), lr=args.lr)
-        best_score = -np.inf
-        best_epoch = 0
-        stop_round = 0
-        # save best parameters
-        best_param = copy.deepcopy(model.state_dict())
-        params_list = collections.deque(maxlen=args.smooth_steps)
-        for epoch in range(args.n_epochs):
-            pprint('Running', times, 'Epoch:', epoch)
-            pprint('training...')
-            train_epoch(epoch, model, optimizer, train_loader, writer, args, stock2concept_matrix, stock2stock_matrix)
-            # save model  after every epoch
-            # -------------------------------------------------------------------------
-            # torch.save(model.state_dict(), output_path+'/model.bin.e'+str(epoch))
-            # torch.save(optimizer.state_dict(), output_path+'/optimizer.bin.e'+str(epoch))
+        preds = []
+        for train_loader, valid_loader, test_loader in zip(train_loaders, valid_loaders, test_loaders):
+            optimizer = optim.Adam(model.parameters(), lr=args.lr)
+            best_score = -np.inf
+            best_epoch = -1
+            stop_round = 0
+            # save best parameters
+            best_param = copy.deepcopy(model.state_dict())
+            params_list = collections.deque(maxlen=args.smooth_steps)
+            for epoch in range(args.n_epochs):
+                pprint('Running', times, 'Epoch:', epoch)
+                pprint('training...')
+                train_epoch(epoch, model, optimizer, train_loader, writer, args, stock2concept_matrix, stock2stock_matrix)
+                # save model  after every epoch
+                # -------------------------------------------------------------------------
+                # torch.save(model.state_dict(), output_path+'/model.bin.e'+str(epoch))
+                # torch.save(optimizer.state_dict(), output_path+'/optimizer.bin.e'+str(epoch))
 
-            params_ckpt = copy.deepcopy(model.state_dict())
-            params_list.append(params_ckpt)
-            avg_params = average_params(params_list)
-            # when evaluating, use the avg_params in the current time to evaluate
-            model.load_state_dict(avg_params)
+                params_ckpt = copy.deepcopy(model.state_dict())
+                params_list.append(params_ckpt)
+                avg_params = average_params(params_list)
+                # when evaluating, use the avg_params in the current time to evaluate
+                model.load_state_dict(avg_params)
 
-            pprint('evaluating...')
-            # compute the loss, score, pre, recall, ic, rank_ic on train, valid and test data
-            train_loss, train_score, train_precision, train_recall, train_ic, train_rank_ic, train_ndcg = test_epoch(epoch, model, train_loader, writer, args, stock2concept_matrix, stock2stock_matrix, prefix='Train')
-            val_loss, val_score, val_precision, val_recall, val_ic, val_rank_ic, val_ndcg = test_epoch(epoch, model, valid_loader, writer, args, stock2concept_matrix, stock2stock_matrix, prefix='Valid')
-            test_loss, test_score, test_precision, test_recall, test_ic, test_rank_ic, test_ndcg = test_epoch(epoch, model, test_loader, writer, args, stock2concept_matrix, stock2stock_matrix, prefix='Test')
+                pprint('evaluating...')
+                # compute the loss, score, pre, recall, ic, rank_ic on train, valid and test data
+                # train_loss, train_score, train_precision, train_recall, train_ic, train_rank_ic, train_ndcg = test_epoch(epoch, model, train_loader, writer, args, stock2concept_matrix, stock2stock_matrix, prefix='Train')
+                val_loss, val_score, val_precision, val_recall, val_ic, val_rank_ic, val_ndcg = test_epoch(epoch, model, valid_loader, writer, args, stock2concept_matrix, stock2stock_matrix, prefix='Valid')
+                # pprint('train_ic %.6f, train_rank_ic %.6f' % (train_ic, train_rank_ic))
+                pprint('valid_ic %.6f, valid_rank_ic %.6f' % (val_ic, val_rank_ic))
+                
+                # pprint('train_loss %.6f, valid_loss %.6f, test_loss %.6f'%(train_loss, val_loss, test_loss))
+                # score equals to ic here
+                # pprint('train_score %.6f, valid_score %.6f, test_score %.6f'%(train_score, val_score, test_score))
+                # pprint('train_mse %.6f, valid_mse %.6f, test_mse %.6f'%(train_mse, val_mse, test_mse))
+                # pprint('train_mae %.6f, valid_mae %.6f, test_mae %.6f'%(train_mae, val_mae, test_mae))
+                # pprint('Train Precision: ', train_precision)
+                # pprint('Valid Precision: ', val_precision)
+                # pprint('Test Precision: ', test_precision)
+                # pprint('Train Recall: ', train_recall)
+                # pprint('Valid Recall: ', val_recall)
+                # pprint('Test Recall: ', test_recall)
+                # pprint('Train NDCG: ', train_ndcg)
+                # pprint('Valid NDCG: ', val_ndcg)
+                # pprint('Test NDCG: ', test_ndcg)
+                # load back the current parameters
+                model.load_state_dict(params_ckpt)
 
-            pprint('train_loss %.6f, valid_loss %.6f, test_loss %.6f'%(train_loss, val_loss, test_loss))
-            pprint('train_ic %.6f, valid_ic %.6f, test_ic %.6f' % (train_ic, val_ic, test_ic))
-            pprint('train_rank_ic %.6f, valid_rank_ic %.6f, test_rank_ic %.6f' % (train_rank_ic, val_rank_ic, test_rank_ic))
-            pprint('Train Precision: ', train_precision)
-            pprint('Valid Precision: ', val_precision)
-            pprint('Test Precision: ', test_precision)
-            pprint('Train Recall: ', train_recall)
-            pprint('Valid Recall: ', val_recall)
-            pprint('Test Recall: ', test_recall)
-            pprint('Train NDCG: ', train_ndcg)
-            pprint('Valid NDCG: ', val_ndcg)
-            pprint('Test NDCG: ', test_ndcg)
-            # load back the current parameters
-            model.load_state_dict(params_ckpt)
-
-            if val_score > best_score:
-                # the model performance is increasing
-                best_score = val_score
-                stop_round = 0
-                best_epoch = epoch
-                best_param = copy.deepcopy(avg_params)
-            else:
-                # the model performance is not increasing
-                stop_round += 1
-                if stop_round >= args.early_stop:
-                    pprint('early stop')
-                    break
-
-        pprint('best score:', best_score, '@', best_epoch)
-        model.load_state_dict(best_param)
-        torch.save(best_param, output_path+'/model.bin')
-
-        pprint('inference...')
-        res = dict()
-        for name in ['train', 'valid', 'test']:
-            # do prediction on train, valid and test data
-            pred = inference(model, eval(name+'_loader'), stock2concept_matrix=stock2concept_matrix,
-                            stock2stock_matrix=stock2stock_matrix)
-            # save the pkl every repeat time
-            # pred.to_pickle(output_path+'/pred.pkl.'+name+str(times))
-
-            precision, recall, ic, rank_ic, ndcg = metric_fn(pred)
-
-            pprint('%s: IC %.6f Rank IC %.6f' % (name, ic.mean(), rank_ic.mean()))
-            pprint(name, ': Precision ', precision)
-            pprint(name, ': Recall ', recall)
-            pprint(name, ':NDCG', ndcg)
-            res[name+'-IC'] = ic
-            # res[name+'-ICIR'] = ic.mean() / ic.std()
-            res[name+'-RankIC'] = rank_ic
-            res[name+'-NDCG@100'] = ndcg[100]
-            # res[name+'-RankICIR'] = rank_ic.mean() / rank_ic.std()
+                if val_score > best_score:
+                    # the model performance is increasing
+                    best_score = val_score
+                    stop_round = 0
+                    best_epoch = epoch
+                    best_param = copy.deepcopy(avg_params)
+                else:
+                    # the model performance is not increasing
+                    stop_round += 1
+                    if stop_round >= args.early_stop:
+                        pprint('early stop')
+                        break
         
-        all_precision.append(list(precision.values()))
-        all_recall.append(list(recall.values()))
-        all_ndcg.append(list(ndcg.values()))
-        all_ic.append(ic)
-        all_rank_ic.append(rank_ic)
+            pprint('best score:', best_score, '@', best_epoch)
+            model.load_state_dict(best_param)
+            pred = test_epoch(epoch, model, test_loader, writer, args, stock2concept_matrix, stock2stock_matrix, prefix='Test', return_preds=True)
+            preds.append(pred)
+            if best_score > global_best_score:
+                # only save when we have a new global score
+                torch.save(best_param, output_path+'/model.bin')
+                global_best_score = best_score
+        
+        test_loss, test_score, test_precision, test_recall, test_ic, test_rank_ic, test_ndcg = test_epoch(epoch, model, test_loader, writer, args, stock2concept_matrix, stock2stock_matrix, prefix='Test', preds=pd.concat(preds, axis=0))
+        pprint('test IC: %.6f, test rank IC: %.6f' % (test_ic, test_rank_ic))
+        del train_loader, valid_loader, test_loader
+        torch.cuda.empty_cache()
 
-        pprint('save info...')
-        writer.add_hparams(
-            vars(args),
-            {
-                'hparam/'+key: value
-                for key, value in res.items()
-            }
-        )
 
-        info = dict(
-            config=vars(args),
-            best_epoch=best_epoch,
-            best_score=res,
-        )
-        default = lambda x: str(x)[:10] if isinstance(x, pd.Timestamp) else x
-        with open(output_path+'/info.json', 'w') as f:
-            json.dump(info, f, default=default, indent=4)
+
+    #     pprint('inference...')
+    #     res = dict()
+    #     for name in ['train', 'valid', 'test']:
+    #         # do prediction on train, valid and test data
+    #         if name != 'test':
+    #             pred = inference(model, eval(name+'_loader'), stock2concept_matrix=stock2concept_matrix,
+    #                             stock2stock_matrix=stock2stock_matrix)
+    #         else: pred = pd.concat(preds, axis=0)
+    #         # save the pkl every repeat time
+    #         # pred.to_pickle(output_path+'/pred.pkl.'+name+str(times))
+
+    #         precision, recall, ic, rank_ic, ndcg = metric_fn(pred)
+
+    #         pprint('%s: IC %.6f Rank IC %.6f' % (name, ic.mean(), rank_ic.mean()))
+    #         # pprint(name, ': Precision ', precision)
+    #         # pprint(name, ': Recall ', recall)
+    #         # pprint(name, ':NDCG', ndcg)
+    #         # res[name+'-IC'] = ic
+    #         # # res[name+'-ICIR'] = ic.mean() / ic.std()
+    #         # res[name+'-RankIC'] = rank_ic
+    #         # res[name+'-NDCG@100'] = ndcg[100]
+    #         # # res[name+'-RankICIR'] = rank_ic.mean() / rank_ic.std()
+        
+        all_precision.append(list(test_precision.values()))
+        all_recall.append(list(test_recall.values()))
+        all_ndcg.append(list(test_ndcg.values()))
+        all_ic.append(test_ic)
+        all_rank_ic.append(test_rank_ic)
+
+    #     pprint('save info...')
+    #     writer.add_hparams(
+    #         vars(args),
+    #         {
+    #             'hparam/'+key: value
+    #             for key, value in res.items()
+    #         }
+    #     )
+
+    #     info = dict(
+    #         config=vars(args),
+    #         best_epoch=best_epoch,
+    #         best_score=res,
+    #     )
+    #     default = lambda x: str(x)[:10] if isinstance(x, pd.Timestamp) else x
+    #     with open(output_path+'/info.json', 'w') as f:
+    #         json.dump(info, f, default=default, indent=4)
     pprint('IC: %.4f (%.4f), Rank IC: %.4f (%.4f)' % (np.array(all_ic).mean(), np.array(all_ic).std(), np.array(all_rank_ic).mean(), np.array(all_rank_ic).std()))
     precision_mean = np.array(all_precision).mean(axis=0)
     precision_std = np.array(all_precision).std(axis=0)
@@ -408,6 +509,13 @@ def main(args):
         pprint('Precision@%d: %.4f (%.4f)' % (N[k], precision_mean[k], precision_std[k]))
         pprint('NDCG@%d: %.4f (%.4f)' % (N[k], ndcg_mean[k], ndcg_std[k]))
 
+    with open(os.path.join(output_path, 'ic_ric_result.txt'), 'w') as f:
+        f.write(f"{np.array(all_ic).mean()} {np.array(all_rank_ic).mean()}")
+    
+    # with open(os.path.join(output_path, 'pred.pkl'), 'wb') as f:
+    
+    pd.concat(preds, axis=0).to_csv(os.path.join(output_path, 'pred.csv'))
+        
     pprint('finished.')
 
 
@@ -429,7 +537,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # model
-    parser.add_argument('--model_name', default='relation_GATs')
+    parser.add_argument('--model_name', default='KEnhance')
     parser.add_argument('--d_feat', type=int, default=6)
     parser.add_argument('--hidden_size', type=int, default=128)
     parser.add_argument('--num_layers', type=int, default=2)
@@ -458,10 +566,10 @@ def parse_args():
 
     # training
     parser.add_argument('--n_epochs', type=int, default=100)
-    parser.add_argument('--lr', type=float, default=2e-4)
+    parser.add_argument('--lr', type=float, default=1e-4)
     parser.add_argument('--early_stop', type=int, default=30)
     parser.add_argument('--smooth_steps', type=int, default=5)
-    parser.add_argument('--metric', default='IC')
+    parser.add_argument('--metric', default='Rank_IC')
     parser.add_argument('--loss', default='mse')
     parser.add_argument('--repeat', type=int, default=5)
 
@@ -472,27 +580,31 @@ def parse_args():
     parser.add_argument('--batch_size', type=int, default=-1)  # -1 indicate daily batch
     parser.add_argument('--least_samples_num', type=float, default=1137.0) 
     parser.add_argument('--label', default='')  # specify other labels
-    parser.add_argument('--train_start_date', default='2019-01-01')
-    parser.add_argument('--train_end_date', default='2020-12-31')
-    parser.add_argument('--valid_start_date', default='2019-01-01')
-    parser.add_argument('--valid_end_date', default='2020-12-31')
-    parser.add_argument('--test_start_date', default='2021-01-01')
-    parser.add_argument('--test_end_date', default='2021-12-31')
+    parser.add_argument('--train_start_date', default='2008-01-01')
+    parser.add_argument('--train_end_date', default='2021-05-31')
+    parser.add_argument('--valid_start_date', default='2021-06-01')
+    parser.add_argument('--valid_end_date', default='2022-06-01')
+    parser.add_argument('--test_start_date', default='2022-06-01')
+    parser.add_argument('--test_end_date', default='2023-06-30')
 
     # other
     parser.add_argument('--seed', type=int, default=0)
     parser.add_argument('--annot', default='')
     parser.add_argument('--config', action=ParseConfigFile, default='')
-    parser.add_argument('--name', type=str, default='RSR')
+    parser.add_argument('--name', type=str, default='')
 
     # input for csi 300
     parser.add_argument('--market_value_path', default='./data/csi300_market_value_07to22.pkl')
     parser.add_argument('--stock2concept_matrix', default='./data/csi300_stock2concept.npy')
-    parser.add_argument('--stock2stock_matrix', default='./data/csi300_multi_stock2stock_all.npy')
-    parser.add_argument('--stock_index', default='./data/csi300_stock_index.npy')
-    parser.add_argument('--outdir', default='./output/RSR_all')
+    parser.add_argument('--stock2stock_matrix', default='./data/csi300_multi_stock2stock_hidy_2023.npy')
+    parser.add_argument('--stock_index', default='./data/csi300_stock_index_2023.npy')
+    parser.add_argument('--outdir', default='./output/for_platform/new_KEnhance_2023')
     parser.add_argument('--overwrite', action='store_true', default=False)
-    parser.add_argument('--device', default='cuda:1')
+    parser.add_argument('--device', default='cuda:0')
+    
+    # others
+    parser.add_argument('--n_split_test', type=int, default=1)
+    
     args = parser.parse_args()
 
     return args
@@ -502,6 +614,7 @@ if __name__ == '__main__':
     """
     for prediction, maybe repeat 5, early_stop 10 is enough
     """
+    # sys.argv += '--model_name KEnhance --outdir ./output/KEnhance --lr 0.0001 --smooth_step 1 --n_epochs 1 --repeat 1 --early_stop 5'.split()
     args = parse_args()
     device = args.device if torch.cuda.is_available() else 'cpu'
     main(args)

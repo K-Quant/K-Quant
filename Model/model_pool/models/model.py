@@ -3,10 +3,8 @@ import torch.nn as nn
 import torch.nn.init as init
 import numpy as np
 import sys
-from pathlib import Path
-DIRNAME = Path(__file__).absolute().resolve().parent
-sys.path.insert(0, str(DIRNAME.parent.parent))
-from model_pool.utils.utils import cal_cos_similarity
+sys.path.append("..")
+from utils.utils import cal_cos_similarity
 
 
 class MLP(nn.Module):
@@ -81,7 +79,7 @@ class HIST(nn.Module):
         cos_similarity[cos_similarity != cos_similarity] = 0
         return cos_similarity
 
-    def forward(self, x, concept_matrix, market_value=None):
+    def forward(self, x, concept_matrix, market_value):
         # N = the number of stock in current slice
         # F = feature length
         # T = number of days, usually = 60, since F*T should be 360
@@ -95,14 +93,12 @@ class HIST(nn.Module):
         # get the last layer embeddings
 
         # Predefined Concept Module
-        if market_value is not None:
-            market_value_matrix = market_value.reshape(market_value.shape[0], 1).repeat(1, concept_matrix.shape[1])
-            # make the market value matrix the same size as the concept matrix by repeat
-            # market value matrix shape: (N, number of pre define concepts)
-            stock_to_concept = concept_matrix * market_value_matrix
-        else:
-            stock_to_concept = concept_matrix
-            # torch.sum generate (1, number of pre define concepts) -> repeat (N, number of predefine concepts)
+
+        market_value_matrix = market_value.reshape(market_value.shape[0], 1).repeat(1, concept_matrix.shape[1])
+        # make the market value matrix the same size as the concept matrix by repeat
+        # market value matrix shape: (N, number of pre define concepts)
+        stock_to_concept = concept_matrix * market_value_matrix
+        # torch.sum generate (1, number of pre define concepts) -> repeat (N, number of predefine concepts)
         # 对应每个concept 得到其相关所有股票市值的和, sum在哪个维度上操作，哪个维度被压缩成1
         stock_to_concept_sum = torch.sum(stock_to_concept, 0).reshape(1, -1).repeat(stock_to_concept.shape[0], 1)
         # mul得到结果 （N，number of predefine concepts），每个股票对应的概念不再是0或1，而是0或其相关股票市值之和
@@ -191,8 +187,37 @@ class HIST(nn.Module):
         pred_all = self.fc_out(all_info).squeeze()
         return pred_all
 
-
 class GRU(nn.Module):
+    def __init__(self, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0):
+        super().__init__()
+        
+        self.net = nn.Sequential()
+        self.net.add_module("fc_in", nn.Linear(in_features=d_feat, out_features=hidden_size))
+        self.net.add_module("act", nn.Tanh())
+
+        self.gru = nn.GRU(
+            input_size=hidden_size,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=True,
+            dropout=dropout,
+        )
+        self.fc = nn.Linear(hidden_size, 1)
+
+        self.d_feat = d_feat
+        
+        # sd = torch.load(r'model.bin', map_location=torch.device('cpu'))
+        # self.load_state_dict(sd)
+
+    def forward(self, x):
+        # x shape N, F*T
+        x = x.reshape(len(x), self.d_feat, -1)  # [N, F, T]
+        x = x.permute(0, 2, 1)  # [N, T, F]
+        out, _ = self.gru(self.net(x))
+        # deliver the last layer as output
+        return self.fc(out[:, -1, :]).squeeze()
+
+class GRU0(nn.Module):
     def __init__(self, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0):
         super().__init__()
 
@@ -206,6 +231,9 @@ class GRU(nn.Module):
         self.fc = nn.Linear(hidden_size, 1)
 
         self.d_feat = d_feat
+        
+        # sd = torch.load(r'model.bin', map_location=torch.device('cpu'))
+        # self.load_state_dict(sd)
 
     def forward(self, x):
         # x shape N, F*T
@@ -555,7 +583,7 @@ class ALSTM(nn.Module):
 
 
 class relation_GATs(nn.Module):
-    def __init__(self, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0, base_model="GRU", num_relation=0):
+    def __init__(self, num_relation, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0, base_model="GRU"):
         super().__init__()
 
         self.d_feat = d_feat
@@ -615,7 +643,7 @@ class relation_GATs(nn.Module):
 
 
 class relation_GATs_3heads(nn.Module):
-    def __init__(self, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0, base_model="GRU"):
+    def __init__(self, num_relation, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0, base_model="GRU"):
         super().__init__()
 
         self.d_feat = d_feat
@@ -720,19 +748,20 @@ class KEnhance(nn.Module):
         self.base_model = base_model
         self.num_layers = num_layers
         self.dropout = dropout
+        names = self.__dict__
         for i in range(head_num):
-            self.add_module('rnn_' + str(i), nn.GRU(
+            names['rnn_' + str(i)] = nn.GRU(
                 input_size=d_feat,
                 hidden_size=hidden_size,
                 num_layers=num_layers,
                 batch_first=True,
                 dropout=dropout,
-            ))
-            self.register_parameter('W_' + str(i), torch.nn.Parameter(torch.randn((hidden_size * 2), 1)))
-            self.__getattr__('W_' + str(i)).require_grad = True
-            torch.nn.init.xavier_uniform_(self.__getattr__('W_' + str(i)))
-            self.register_parameter('b_' + str(i), torch.nn.Parameter(torch.tensor(0, dtype=torch.float)))
-            self.__getattr__('b_' + str(i)).requires_grad = True
+            )
+            names['W_' + str(i)] = torch.nn.Parameter(torch.randn((hidden_size * 2), 1))
+            names['W_' + str(i)].require_grad = True
+            torch.nn.init.xavier_uniform_(names['W_' + str(i)])
+            names['b_' + str(i)] = torch.nn.Parameter(torch.tensor(0, dtype=torch.float))
+            names['b_' + str(i)].requires_grad = True
 
         # self.rnn = nn.GRU(
         #     input_size=d_feat,
@@ -785,6 +814,14 @@ class KEnhance(nn.Module):
             batch_first=True,
             dropout=self.dropout,
         )
+        
+        # gru_state_dict = dict(torch.load(r'output\GRU\model.bin', map_location=torch.device('cpu')))
+        # for k in list(gru_state_dict.keys()):
+        #     if k.startswith('gru'): gru_state_dict[k[k.find('.')+1:]] = gru_state_dict.pop(k)
+        #     else: gru_state_dict.pop(k)
+        # self.rnn.load_state_dict(gru_state_dict)
+        # self.rnn.requires_grad_(False)
+        
         self.fc_out = nn.Linear(in_features=self.hidden_size * 2, out_features=1)
         self.att_net = nn.Sequential()
         self.att_net.add_module(
@@ -800,9 +837,9 @@ class KEnhance(nn.Module):
         self.att_net.add_module("att_softmax", nn.Softmax(dim=1))
 
     def build_att_tensor(self, x, raw, index):
-        # name = self.__dict__
-        # gru = name['rnn_' + str(index)].to(x.device)
-        g_hidden, _ = self.__getattr__('rnn_' + str(index))(raw)
+        name = self.__dict__
+        gru = name['rnn_' + str(index)].to(x.device)
+        g_hidden, _ = gru(raw)
         f = g_hidden[:, -1, :]
         N = len(x)
         eye = torch.eye(N, N, device=f.device)
@@ -810,9 +847,9 @@ class KEnhance(nn.Module):
         ei = x.unsqueeze(1).repeat(1, N, 1)  # shape N,N,64
         hidden_batch = x.unsqueeze(0).repeat(N, 1, 1)  # shape N,N,64
         matrix = torch.cat((ei, hidden_batch), 2)  # matrix shape N,N,128
-        # W = name['W_' + str(index)].to(x.device)
-        # b = name['b_' + str(index)].to(x.device)
-        weight = (torch.matmul(matrix, self.__getattr__('W_' + str(index))) + self.__getattr__('b_' + str(index))).squeeze(2)
+        W = name['W_' + str(index)].to(x.device)
+        b = name['b_' + str(index)].to(x.device)
+        weight = (torch.matmul(matrix, W) + b).squeeze(2)
         weight = self.leaky_relu(weight)  # relu layer
         # valid_weight = g * weight
         index = torch.t((g == 0).nonzero())
@@ -865,3 +902,167 @@ class KEnhance(nn.Module):
         # now hidden shape (N,hidden_size*2) stores all new embeddings
         pred = self.fc(hidden).squeeze()
         return pred
+
+
+class s2s_HIST(nn.Module):
+    def __init__(self, num_relation, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0, base_model="GRU", K=3):
+        super().__init__()
+
+        self.d_feat = d_feat
+        self.hidden_size = hidden_size
+
+        self.rnn = nn.GRU(
+            input_size=d_feat,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=True,
+            dropout=dropout,
+        )
+
+        self.fc_ps = nn.Linear(hidden_size, hidden_size)
+        torch.nn.init.xavier_uniform_(self.fc_ps.weight)
+        self.fc_hs = nn.Linear(hidden_size, hidden_size)
+        torch.nn.init.xavier_uniform_(self.fc_hs.weight)
+
+        self.fc_ps_fore = nn.Linear(hidden_size, hidden_size)
+        torch.nn.init.xavier_uniform_(self.fc_ps_fore.weight)
+        self.fc_hs_fore = nn.Linear(hidden_size, hidden_size)
+        torch.nn.init.xavier_uniform_(self.fc_hs_fore.weight)
+
+        self.fc_ps_back = nn.Linear(hidden_size, hidden_size)
+        torch.nn.init.xavier_uniform_(self.fc_ps_back.weight)
+        self.fc_hs_back = nn.Linear(hidden_size, hidden_size)
+        torch.nn.init.xavier_uniform_(self.fc_hs_back.weight)
+        self.fc_indi = nn.Linear(hidden_size, hidden_size)
+        torch.nn.init.xavier_uniform_(self.fc_indi.weight)
+
+        self.leaky_relu = nn.LeakyReLU()
+        self.softmax_s2t = torch.nn.Softmax(dim=0)
+        self.softmax_t2s = torch.nn.Softmax(dim=1)
+
+        self.fc_out_ps = nn.Linear(hidden_size, 1)
+        self.fc_out_hs = nn.Linear(hidden_size, 1)
+        self.fc_out_indi = nn.Linear(hidden_size, 1)
+        self.fc_out = nn.Linear(hidden_size, 1)
+        self.K = K
+
+    def cal_cos_similarity(self, x, y):  # the 2nd dimension of x and y are the same
+        xy = x.mm(torch.t(y))
+        x_norm = torch.sqrt(torch.sum(x * x, dim=1)).reshape(-1, 1)
+        y_norm = torch.sqrt(torch.sum(y * y, dim=1)).reshape(-1, 1)
+        cos_similarity = xy / x_norm.mm(torch.t(y_norm))
+        cos_similarity[cos_similarity != cos_similarity] = 0
+        return cos_similarity
+
+    def forward(self, x, concept_matrix, market_value):
+        # N = the number of stock in current slice
+        # F = feature length
+        # T = number of days, usually = 60, since F*T should be 360
+        # x is the feature of all stocks in one day
+        # device = torch.device(torch.get_device(x))
+        device = x.device
+        x_hidden = x.reshape(len(x), self.d_feat, -1)  # [N, F, T]
+        x_hidden = x_hidden.permute(0, 2, 1)  # [N, T, F]
+        x_hidden, _ = self.rnn(x_hidden)
+        x_hidden = x_hidden[:, -1, :]
+        # get the last layer embeddings
+
+        # ---------------------
+        # the difference of s2s_hist between original HIST is that s2s_hist use the s2s matrix as input, so here we need
+        # to modify the s2s matrix into 2D matrix
+        concept_matrix = torch.sum(concept_matrix, 2)
+        # ---------------------
+
+        # Predefined Concept Module
+        market_value_matrix = market_value.reshape(market_value.shape[0], 1).repeat(1, concept_matrix.shape[1])
+        # make the market value matrix the same size as the concept matrix by repeat
+        # market value matrix shape: (N, number of pre define concepts)
+        stock_to_concept = concept_matrix * market_value_matrix
+        # torch.sum generate (1, number of pre define concepts) -> repeat (N, number of predefine concepts)
+        # 对应每个concept 得到其相关所有股票市值的和, sum在哪个维度上操作，哪个维度被压缩成1
+        stock_to_concept_sum = torch.sum(stock_to_concept, 0).reshape(1, -1).repeat(stock_to_concept.shape[0], 1)
+        # mul得到结果 （N，number of predefine concepts），每个股票对应的概念不再是0或1，而是0或其相关股票市值之和
+        stock_to_concept_sum = stock_to_concept_sum.mul(concept_matrix)
+        # 所有位置+1，防止除法报错
+        stock_to_concept_sum = stock_to_concept_sum + (
+            torch.ones(stock_to_concept.shape[0], stock_to_concept.shape[1]).to(device))
+        # 做除法，得到每个股票对应的在concepts上的权重，对应公式4
+        stock_to_concept = stock_to_concept / stock_to_concept_sum
+        # stock_to_concept transpose (number of predefine concept, N) x_hidden(N, the output of gru)
+        hidden = torch.t(stock_to_concept).mm(x_hidden)
+        # hidden here is the embeddings of all predefine concept (number of concept, the output of gru)
+        # 至此concept的embeddings初始化完成，对应论文中公式5
+        hidden = hidden[hidden.sum(1) != 0]
+        # stock_to_concept (N, number of concept) 对应embeddings相乘相加
+        stock_to_concept = x_hidden.mm(torch.t(hidden))
+        # stock_to_concept = cal_cos_similarity(x_hidden, hidden)
+        # 对dim0作softmax， stock_to_concept (N, number of concept)，得到不同股票在同一concept上的权重
+        stock_to_concept = self.softmax_s2t(stock_to_concept)
+        # hidden shape (number of concept, output of gru) now hidden have the embedding of all concepts
+        # 使用新得到的权重更新hidden中concept的embeddings
+        hidden = torch.t(stock_to_concept).mm(x_hidden)
+
+        # 计算x_hidden和hidden的cos sim concept_to_stock shape (N, number of concept)
+        concept_to_stock = cal_cos_similarity(x_hidden, hidden)
+        # softmax on dim1, (N, number of concept) 得到同一股票在不同concept上的权重，公式6
+        concept_to_stock = self.softmax_t2s(concept_to_stock)
+
+        # p_shared_info (N, output of gru) 公式7的累加部分
+        # 过三个不同的linear层输出三个不同的tensor
+        # output_ps 通过leaky_relu，公式7
+        p_shared_info = concept_to_stock.mm(hidden)
+        p_shared_info = self.fc_ps(p_shared_info)
+
+        p_shared_back = self.fc_ps_back(p_shared_info)
+        output_ps = self.fc_ps_fore(p_shared_info)
+        output_ps = self.leaky_relu(output_ps)
+
+        pred_ps = self.fc_out_ps(output_ps).squeeze()
+
+        # Hidden Concept Module
+        h_shared_info = x_hidden - p_shared_back
+        hidden = h_shared_info
+        # compute the cos sim between stocks and h_con(h_con generated from stocks, so cos sim with itself)
+        h_stock_to_concept = cal_cos_similarity(h_shared_info, hidden)
+
+        dim = h_stock_to_concept.shape[0]
+        diag = h_stock_to_concept.diagonal(0)
+        # delete itself
+        h_stock_to_concept = h_stock_to_concept * (torch.ones(dim, dim) - torch.eye(dim)).to(device)
+        # row = torch.linspace(0,dim-1,dim).to(device).long()
+        # column = h_stock_to_concept.argmax(1)
+        # split dim-1 into dim pieces, then reshape to (dim, 1) -> repeat (dim, K) -> reshape (1, dim*K)
+        row = torch.linspace(0, dim - 1, dim).reshape([-1, 1]).repeat(1, self.K).reshape(1, -1).long().to(device)
+        # found column index of topk value, and reshape to (1, dim*K)
+        column = torch.topk(h_stock_to_concept, self.K, dim=1)[1].reshape(1, -1)
+        mask = torch.zeros([h_stock_to_concept.shape[0], h_stock_to_concept.shape[1]], device=h_stock_to_concept.device)
+        # set the topk position mask to 1
+        mask[row, column] = 1
+        h_stock_to_concept = h_stock_to_concept * mask
+        # add the original embedding h_stock_to_concept (N,N)
+        h_stock_to_concept = h_stock_to_concept + torch.diag_embed((h_stock_to_concept.sum(0) != 0).float() * diag)
+        # hidden shape (the length of embedding, N)*(N,N) -> transpose (N, the length of embedding)
+        hidden = torch.t(h_shared_info).mm(h_stock_to_concept).t()
+        # delete concepts that have no connections
+        hidden = hidden[hidden.sum(1) != 0]
+
+        h_concept_to_stock = cal_cos_similarity(h_shared_info, hidden)
+        h_concept_to_stock = self.softmax_t2s(h_concept_to_stock)
+        h_shared_info = h_concept_to_stock.mm(hidden)
+        h_shared_info = self.fc_hs(h_shared_info)
+
+        h_shared_back = self.fc_hs_back(h_shared_info)
+        output_hs = self.fc_hs_fore(h_shared_info)
+        output_hs = self.leaky_relu(output_hs)
+        pred_hs = self.fc_out_hs(output_hs).squeeze()
+
+        # Individual Information Module
+        individual_info = x_hidden - p_shared_back - h_shared_back
+        output_indi = individual_info
+        output_indi = self.fc_indi(output_indi)
+        output_indi = self.leaky_relu(output_indi)
+        pred_indi = self.fc_out_indi(output_indi).squeeze()
+        # Stock Trend Prediction
+        all_info = output_ps + output_hs + output_indi
+        pred_all = self.fc_out(all_info).squeeze()
+        return pred_all
