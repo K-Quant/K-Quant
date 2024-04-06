@@ -168,25 +168,43 @@ class Explanation:
                             if type(res[k_stock]['relations']) == str:
                                 res[k_stock]['relations'] = [res[k_stock]['relations']]
                 elif self.explainer_name == 'hencexExplainer':
+                    # for k in explanation:
+                    #     k_stock = index[k][1]
+                    #     res[k_stock] = []
+                    #     if relation_list:
+                    #         stock_relations = graph[stock_id, k, :].nonzero().squeeze().tolist()
+                    #         res[k_stock] = np.array(relation_list)[stock_relations].tolist()
+                    #         if type(res[k_stock]) == str:
+                    #             res[k_stock] = [res[k_stock]]
+
                     for k in explanation:
                         k_stock = index[k][1]
-                        res[k_stock] = []
+                        res[k_stock] = {}
                         if relation_list:
                             stock_relations = graph[stock_id, k, :].nonzero().squeeze().tolist()
-                            res[k_stock] = np.array(relation_list)[stock_relations].tolist()
-                            if type(res[k_stock]) == str:
-                                res[k_stock] = [res[k_stock]]
+                            res[k_stock]['relations'] = np.array(relation_list)[stock_relations].tolist()
+                            res[k_stock]['score'] = 1
+                            if type(res[k_stock]['relations']) == str:
+                                res[k_stock]['relations'] = [ res[k_stock]['relations']]
+
                 else:
                     # for GNNExplainer, EffectExplainer
+                    # for k, v in explanation.items():
+                    #     k_stock = index[k][1]
+                    #     res[k_stock] = {}
+                    #     res[k_stock]['total_score'] = v[0]
+                    #     if relation_list:
+                    #         stock_relations = list(v[1].keys())
+                    #         res[k_stock]['individual scores'] = {}
+                    #         for r in stock_relations:
+                    #             res[k_stock]['individual scores'][relation_list[r]] = v[1][r]
                     for k, v in explanation.items():
                         k_stock = index[k][1]
                         res[k_stock] = {}
-                        res[k_stock]['total_score'] = v[0]
+                        res[k_stock]['score'] = v[0]
                         if relation_list:
                             stock_relations = list(v[1].keys())
-                            res[k_stock]['individual scores'] = {}
-                            for r in stock_relations:
-                                res[k_stock]['individual scores'][relation_list[r]] = v[1][r]
+                            res[k_stock]['relations'] = [relation_list[r] for r in stock_relations]
                 exp_result_dict[str(date)][index[stock_id][1]] = res
         if get_fidelity:
             return exp_result_dict, np.mean(fidelity_all)

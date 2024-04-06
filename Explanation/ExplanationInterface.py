@@ -73,7 +73,7 @@ def parse_args():
 
     parser.add_argument('--stock_index', default='D:\Research\Fintech\K-Quant\Data\csi300_stock_index.npy')
     parser.add_argument('--model_dir', default='D:\Research\Fintech\K-Quant\parameter')
-    parser.add_argument('--events_files', default='D:\Research\Fintech\K-Quant\Data\event_data2022.json')
+    parser.add_argument('--events_files', default='D:\Research\Fintech\K-Quant\Data\event_data_sigle_stock.json')
 
     parser.add_argument('--overwrite', action='store_true', default=False)
     parser.add_argument('--device', default='cpu')
@@ -250,7 +250,7 @@ def run_gnn_explainer(args, event_data, top_k=3):
     explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
     with open(args.relation_name_list_file, 'r') as json_file:
         _relation_name_list = json.load(json_file)
-    res = explanation.explain_x(stock_list=args.stock_list, top_k=top_k,
+    res = explanation.explain_x(stock_list=args.check_stock_list, top_k=top_k,
                                             relation_list=_relation_name_list)
     res = check_stocks_with_event(args, res, event_data)
     return res
@@ -262,7 +262,7 @@ def run_hencex_explainer(args, event_data, top_k=3):
     explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
     with open(args.relation_name_list_file, 'r') as json_file:
         _relation_name_list = json.load(json_file)
-    res = explanation.explain_x(stock_list=args.stock_list, top_k=top_k,
+    res = explanation.explain_x(stock_list=args.check_stock_list, top_k=top_k,
                                             relation_list=_relation_name_list)
     res = check_stocks_with_event(args, res, event_data)
     return res
@@ -416,9 +416,9 @@ if __name__ == '__main__':
     # print(exp_result_dict)
 
     # for xpath:
-    args.explainer = 'xpathExplainer'
-    exp_result_dict = run_xpath_explanation(args, events_data, get_fidelity=False, top_k=3)
-    print(exp_result_dict)
+    # args.explainer = 'xpathExplainer'
+    # exp_result_dict = run_xpath_explanation(args, events_data, get_fidelity=False, top_k=3)
+    # print(exp_result_dict)
 
     # print(exp_result_dict)
     # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True, top_k=3)
@@ -432,12 +432,13 @@ if __name__ == '__main__':
 
     # for GNNExplainer:
     # args.explainer = 'gnnExplainer'
-    # exp_result_dict = run_gnn_explainer(args, event_data,top_k=3)
+    # exp_result_dict = run_gnn_explainer(args, events_data, top_k=3)
     # print(exp_result_dict)
 
     # for EffectExplainer:
-    # args.explainer = 'hencexExplainer'
-    # exp_result_dict = run_hencex_explainer(args, event_data, top_k=3)
+    args.explainer = 'hencexExplainer'
+    exp_result_dict = run_hencex_explainer(args, events_data, top_k=3)
+    print(exp_result_dict)
 
     # print stock names
     # import pickle
