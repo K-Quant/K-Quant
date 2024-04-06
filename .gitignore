@@ -133,3 +133,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+/Data
+
+/Explanation/outputDataGATs
+/Explanation/outputDataGATsEventScore
+/Explanation/outputDataNRSREvent
+/Explanation/outputDataNRSREventScore
+
+/parameter

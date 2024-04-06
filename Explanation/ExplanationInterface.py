@@ -1,6 +1,8 @@
 import json
 import sys
 import os
+from collections import Counter
+from multiprocessing import Pool
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -99,6 +101,7 @@ def parse_args():
     parser.add_argument("--model_dir", default="..\parameter")
     parser.add_argument("--overwrite", action="store_true", default=False)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument("--events_files", default="..\Data\event_data_single_stock.json")
 
     # relation
     parser.add_argument(
@@ -149,7 +152,7 @@ def run_explanation(args):
         return relative_stocks_dict, score_dict
 
 
-def run_input_gradient_explanation(args):
+def load_params(args):
     param_dict = json.load(
         open(args.model_path + "/" + args.model_name + "/info.json")
     )["config"]
@@ -165,17 +168,97 @@ def run_input_gradient_explanation(args):
     param_dict["graph_data_path"] = param_dict["stock2stock_matrix"]
     param_dict["graph_model"] = param_dict["model_name"]
     param_args = argparse.Namespace(**param_dict)
+    return param_args
+
+
+# def run_input_gradient_explanation(args):
+#     param_dict = json.load(
+#         open(args.model_path + "/" + args.model_name + "/info.json")
+#     )["config"]
+#     # The param_dict is really confusing, so I add the following lines to make it work at my computer.
+#     param_dict["market_value_path"] = args.market_value_path
+#     param_dict["stock2stock_matrix"] = args.stock2stock_matrix
+#     param_dict["stock_index"] = args.stock_index
+#     param_dict["model_dir"] = args.model_dir + "/" + args.model_name
+#     param_dict["data_root"] = args.data_root
+#     param_dict["start_date"] = args.start_date
+#     param_dict["end_date"] = args.end_date
+#     param_dict["device"] = device
+#     param_dict["graph_data_path"] = param_dict["stock2stock_matrix"]
+#     param_dict["graph_model"] = param_dict["model_name"]
+#     param_args = argparse.Namespace(**param_dict)
+#     if not args.explainer == "inputGradientExplainer":
+#         return None
+#     data_loader = create_data_loaders(args)
+#     explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
+#     exp_result_dict = explanation.explain()
+#     exp_result_dict = check_all_relative_stock(args, exp_result_dict)
+
+#     return exp_result_dict, explanation
+
+
+def run_input_gradient_explanation(args, event_data):
+    param_args = load_params(args)
     if not args.explainer == "inputGradientExplainer":
         return None
     data_loader = create_data_loaders(args)
     explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
     exp_result_dict = explanation.explain()
-    exp_result_dict = check_all_relative_stock(args, exp_result_dict)
+    exp_result_dict, sorted_stock_rank = check_all_relative_stock(
+        args, exp_result_dict, event_data
+    )
 
-    return exp_result_dict, explanation
+    return exp_result_dict, sorted_stock_rank, explanation
 
 
-def search_stocks_prediction_explanation(args, exp_result_dict):
+def get_previous_days(start_date, n):
+    from datetime import datetime, timedelta
+
+    # 将字符串日期转换为 datetime 对象
+    start_date = datetime.strptime(start_date, "%Y-%m-%d")
+
+    # 创建一个空列表，用于存储检索到的日期
+    date_list = []
+
+    # 从指定日期开始向前检索 n 天
+    for i in range(n):
+        # 计算当前日期减去 i 天后的日期
+        previous_date = start_date - timedelta(days=i)
+        # 将日期添加到列表中
+        date_list.append(previous_date.strftime("%Y-%m-%d"))
+
+    return date_list
+
+
+def convert_stock_code(stock_code):
+    # 提取交易所代码和数字部分
+    exchange_code = stock_code[:2]
+    numeric_part = stock_code[2:]
+
+    # 将交易所代码移动到末尾
+    converted_stock_code = numeric_part + "." + exchange_code
+
+    return converted_stock_code
+
+
+def get_events(date, num_days, stock_id, event_data):
+    converted_stock_id = convert_stock_code(stock_id)
+    previous_days = get_previous_days(date, num_days)
+    events = {}
+
+    if converted_stock_id in event_data.keys():
+        have_event_dates = [
+            d for d in event_data[converted_stock_id].keys() if d in previous_days
+        ]
+        for d in have_event_dates:
+            events[d] = event_data[converted_stock_id][d]
+        return events
+
+    else:
+        return {}
+
+
+def search_stocks_prediction_explanation(args, exp_result_dict, event_data):
     result_subset = {}
     for stock_id in args.stock_list:
         result_subset[stock_id] = {}
@@ -183,31 +266,35 @@ def search_stocks_prediction_explanation(args, exp_result_dict):
             # Check if date is within the specified range
             if args.start_date <= date <= args.end_date:
                 if stock_id in result_data.keys():
-                    result_subset[stock_id][date] = result_data[stock_id]
+                    result_subset[stock_id][date] = {}
+                    for key, res in result_data[stock_id].items():
+                        result_subset[stock_id][date][key] = {
+                            "explanation": res,
+                            "events": get_events(date, args.seq_len, key, event_data),
+                        }
     return result_subset
 
 
-def run_xpath_explanation(args, get_fidelity=False, top_k=3):
-    param_dict = json.load(open(args.model_path + "/" + args.model_name + '/info.json'))['config']
-    # The param_dict is really confusing, so I add the following lines to make it work at my computer.
-    param_dict['market_value_path'] = args.market_value_path
-    param_dict['stock2stock_matrix'] = args.stock2stock_matrix
-    param_dict['stock_index'] = args.stock_index
-    param_dict['model_dir'] = args.model_dir + "/" + args.model_name
-    param_dict['data_root'] = args.data_root
-    param_dict['start_date'] = args.start_date
-    param_dict['end_date'] = args.end_date
-    param_dict['device'] = device
-    param_dict['graph_data_path'] = param_dict['stock2stock_matrix']
-    param_dict['graph_model'] = param_dict['model_name']
-    param_args = argparse.Namespace(**param_dict)
+# def search_stocks_prediction_explanation(args, exp_result_dict):
+#     result_subset = {}
+#     for stock_id in args.stock_list:
+#         result_subset[stock_id] = {}
+#         for date, result_data in exp_result_dict.items():
+#             # Check if date is within the specified range
+#             if args.start_date <= date <= args.end_date:
+#                 if stock_id in result_data.keys():
+#                     result_subset[stock_id][date] = result_data[stock_id]
+#     return result_subset
 
+
+def run_xpath_explanation(args, get_fidelity=False, top_k=3):
+    param_args = load_params(args)
     data_loader = create_data_loaders(args)
     explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
     with open(args.relation_name_list_file, "r") as json_file:
         _relation_name_list = json.load(json_file)
-    res = explanation.explain_xpath(
-        stock_list=args.stock_list,
+    res = explanation.explain_x(
+        stock_list=args.check_stock_list,
         get_fidelity=get_fidelity,
         top_k=top_k,
         relation_list=_relation_name_list,
@@ -215,17 +302,125 @@ def run_xpath_explanation(args, get_fidelity=False, top_k=3):
     return res
 
 
-def check_all_relative_stock(args, exp_result_dict):
+def run_gnn_explainer(args, top_k=3):
+    param_args = load_params(args)
+    data_loader = create_data_loaders(args)
+    explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
+    with open(args.relation_name_list_file, "r") as json_file:
+        _relation_name_list = json.load(json_file)
+    res = explanation.explain_x(
+        stock_list=args.check_stock_list, top_k=top_k, relation_list=_relation_name_list
+    )
+    return res
+
+
+def run_hencex_explainer(args, top_k=3):
+    param_args = load_params(args)
+    data_loader = create_data_loaders(args)
+    explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
+    with open(args.relation_name_list_file, "r") as json_file:
+        _relation_name_list = json.load(json_file)
+    res = explanation.explain_x(
+        stock_list=args.check_stock_list, top_k=top_k, relation_list=_relation_name_list
+    )
+    return res
+
+
+# def run_xpath_explanation(args, get_fidelity=False, top_k=3):
+#     param_dict = json.load(open(args.model_path + "/" + args.model_name + '/info.json'))['config']
+#     # The param_dict is really confusing, so I add the following lines to make it work at my computer.
+#     param_dict['market_value_path'] = args.market_value_path
+#     param_dict['stock2stock_matrix'] = args.stock2stock_matrix
+#     param_dict['stock_index'] = args.stock_index
+#     param_dict['model_dir'] = args.model_dir + "/" + args.model_name
+#     param_dict['data_root'] = args.data_root
+#     param_dict['start_date'] = args.start_date
+#     param_dict['end_date'] = args.end_date
+#     param_dict['device'] = device
+#     param_dict['graph_data_path'] = param_dict['stock2stock_matrix']
+#     param_dict['graph_model'] = param_dict['model_name']
+#     param_args = argparse.Namespace(**param_dict)
+
+#     data_loader = create_data_loaders(args)
+#     explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
+#     with open(args.relation_name_list_file, "r") as json_file:
+#         _relation_name_list = json.load(json_file)
+#     res = explanation.explain_xpath(
+#         stock_list=args.stock_list,
+#         get_fidelity=get_fidelity,
+#         top_k=top_k,
+#         relation_list=_relation_name_list,
+#     )
+#     return res
+
+
+# def check_all_relative_stock(args, exp_result_dict):
+#     _stock_index = np.load(args.stock_index, allow_pickle=True).item()
+#     with open(args.relation_name_list_file, "r") as json_file:
+#         _relation_name_list = json.load(json_file)
+#     index_to_stock_id = {index: stock_id for stock_id, index in _stock_index.items()}
+
+#     relative_stocks_dict = {}
+#     for date in exp_result_dict.keys():
+#         exp_graph = exp_result_dict[date]["expl_graph"]
+#         stock_index_in_adj = exp_result_dict[date]["stock_index_in_adj"]
+#         relative_stocks_dict[date] = {}
+
+#         num_stocks, _, num_relations = exp_graph.shape
+
+#         for i in range(num_stocks):
+#             stock_id = index_to_stock_id[stock_index_in_adj[i]]  # 获取股票编号
+#             relative_stocks_dict[date][stock_id] = {}
+#             related_stocks = []
+
+#             for j in range(num_stocks):
+#                 other_stock_id = index_to_stock_id[stock_index_in_adj[j]]
+#                 scores = exp_graph[i, j, :]
+#                 total_score = scores.sum()
+#                 relative_scores = {
+#                     rel_name: score
+#                     for rel_name, score in zip(_relation_name_list, scores)
+#                     if score != 0
+#                 }
+
+#                 if relative_scores:
+#                     related_stocks.append(
+#                         {
+#                             "relative_stock_id": other_stock_id,
+#                             "total_score": total_score,
+#                             "individual_scores": relative_scores,
+#                         }
+#                     )
+
+#             # Sort related_stocks based on total_score
+#             related_stocks.sort(key=lambda x: x["total_score"], reverse=True)
+#             # Keep only the top three related stocks
+#             top_three_related_stocks = related_stocks[:3]
+
+#             for entry in top_three_related_stocks:
+#                 other_stock_id = entry["relative_stock_id"]
+#                 relative_stocks_dict[date][stock_id][other_stock_id] = {
+#                     "total_score": entry["total_score"],
+#                     "individual_scores": entry["individual_scores"],
+#                 }
+
+#     return relative_stocks_dict
+
+
+def check_all_relative_stock(args, exp_result_dict, event_data):
     _stock_index = np.load(args.stock_index, allow_pickle=True).item()
     with open(args.relation_name_list_file, "r") as json_file:
         _relation_name_list = json.load(json_file)
     index_to_stock_id = {index: stock_id for stock_id, index in _stock_index.items()}
 
     relative_stocks_dict = {}
+    stock_rank = {}
     for date in exp_result_dict.keys():
+        pred = exp_result_dict[date]["pred"]
         exp_graph = exp_result_dict[date]["expl_graph"]
         stock_index_in_adj = exp_result_dict[date]["stock_index_in_adj"]
         relative_stocks_dict[date] = {}
+        stock_rank[date] = {}
 
         num_stocks, _, num_relations = exp_graph.shape
 
@@ -233,6 +428,9 @@ def check_all_relative_stock(args, exp_result_dict):
             stock_id = index_to_stock_id[stock_index_in_adj[i]]  # 获取股票编号
             relative_stocks_dict[date][stock_id] = {}
             related_stocks = []
+            pred_result = pred[i]
+            stock_rank[date][stock_id] = pred_result
+            relative_stocks_dict[date][stock_id]["pred_result"] = pred_result
 
             for j in range(num_stocks):
                 other_stock_id = index_to_stock_id[stock_index_in_adj[j]]
@@ -263,9 +461,16 @@ def check_all_relative_stock(args, exp_result_dict):
                 relative_stocks_dict[date][stock_id][other_stock_id] = {
                     "total_score": entry["total_score"],
                     "individual_scores": entry["individual_scores"],
+                    "events": get_events(
+                        date, args.seq_len, other_stock_id, event_data
+                    ),
                 }
 
-    return relative_stocks_dict
+        stock_rank[date] = dict(
+            sorted(stock_rank[date].items(), key=lambda item: item[1], reverse=True)
+        )
+        stock_rank[date] = stock_rank[date].keys()
+    return relative_stocks_dict, stock_rank
 
 
 def evaluate_fidelity(explanation, exp_result_dict, p=0.2):
@@ -338,6 +543,8 @@ def get_results(
                     score["score"], score["f_score"], score["a_score"], score["s_score"]
                 )
             )
+
+
 def convert_float32_to_float(data):
     if isinstance(data, dict):
         for key, value in data.items():
@@ -346,13 +553,27 @@ def convert_float32_to_float(data):
         data = float(data)
     return data
 
+def get_stock_rank(sorted_stock_rank):
+    json_rank = {}
+    for date in sorted_stock_rank.keys():
+        json_rank[date] = {}
+        stock_list = list(sorted_stock_rank[date])
+        stock_len = len(stock_list)
+        for idx in range(stock_len):
+            json_rank[date][stock_list[idx]] = idx + 1
+    return json_rank
+
+
 if __name__ == "__main__":
     args = parse_args()
-    args.start_date = "2022-06-01"
-    args.end_date = "2023-06-30"
-    args.stock_list = ["SH600000"]
-    args.model_name = "relation_GATs"
+    args.start_date = "2022-01-01"
+    args.end_date = "2022-12-31"
+    args.model_name = "NRSR"
+    events_files = args.events_files
+    with open(events_files, "r", encoding="utf-8") as f:
+        events_data = json.load(f)
     # args.date_list = ['2022-06-02']
+
     stock_list = [
         "SH600000",
         "SH600009",
@@ -582,38 +803,67 @@ if __name__ == "__main__":
         "SZ300433",
         "SZ300498",
     ]
+    # list =
+    args.stock_list = stock_list
 
+    # for inputGradient:
 
-     # for inputGradient:
-    
-    # args.explainer = "inputGradientExplainer"
-    # exp_result_dict, explanation = run_input_gradient_explanation(args)
+    args.explainer = "inputGradientExplainer"
+    exp_result_dict, sorted_stock_rank, explanation = run_input_gradient_explanation(
+        args, events_data
+    )
 
-    # list = ["SH600000"]
+    json_rank = get_stock_rank(sorted_stock_rank)
+    print(json_rank)
+    with open("./outputDataNRSRRank.json", "w") as f:
+        json.dump(json_rank, f)
+
     # for stock in stock_list:
     #     args.stock_list = [stock]
 
     #     exp_result_dict_sorted = search_stocks_prediction_explanation(
-    #         args, exp_result_dict
+    #         args, exp_result_dict, events_data
     #     )
     #     exp_json_data = convert_float32_to_float(exp_result_dict_sorted)
-    #     print(exp_json_data)
+    #     # print(exp_json_data)
 
-    #     with open("./outputDataGATs/" + stock + ".json", "w") as f:
+    #     with open("./outputDataNRSREventScore/" + stock + ".json", "w") as f:
     #         json.dump(exp_json_data, f)
 
-    # for xpath:
-    args.explainer = 'xpathExplainer'
-    args.stock_list = stock_list
-    exp_result_dict = run_xpath_explanation(args, get_fidelity=False, top_k=3)
-    print(exp_result_dict)
-    with open("xpath_GATs.json", "w") as f:
-        json.dump(exp_result_dict, f)
+    # # # for inputGradient:
+    args.model_name = "relation_GATs"
+    exp_result_dict, sorted_stock_rank,explanation = run_input_gradient_explanation(args, events_data)
+
+    # print(exp_result_dict)
+    json_rank = get_stock_rank(sorted_stock_rank)
+    # print(json_rank)
+    with open("./outputDataGATsRank.json", "w") as f:
+        json.dump(json_rank, f)
+
+    # for stock in stock_list:
+    #     args.stock_list = [stock]
+
+    #     exp_result_dict_sorted = search_stocks_prediction_explanation(
+    #         args, exp_result_dict,events_data
+    #     )
+    #     exp_json_data = convert_float32_to_float(exp_result_dict_sorted)
+    #     # print(exp_json_data)
+
+    #     with open("./outputDataGATsEvent/" + stock + ".json", "w") as f:
+    #         json.dump(exp_json_data, f)
+
+    # # for xpath:
+    # args.explainer = "xpathExplainer"
+    # args.stock_list = ["SH600000"]
+    # exp_result_dict = run_xpath_explanation(args, get_fidelity=False, top_k=3)
+    # # print(exp_result_dict)
+    # with open("xpath_GATs_event.json", "w") as f:
+    #     json.dump(exp_result_dict, f)
 
     # exp_result_dict = search_stocks_prediction_explanation(args, exp_result_dict)
     # # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
     # print(exp_result_dict)
-        
+
     # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True, top_k=3)
     # print(exp_result_dict, fidelity)
 

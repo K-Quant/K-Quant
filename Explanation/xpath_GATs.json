@@ -1,0 +1,41 @@
+{
+  "2022-06-01": {
+    "SH600018": {
+      "SH601229": { "score": 0.18, "relations": ["increase_holding"] },
+      "SH601988": { "score": 0.2, "relations": ["fall"] },
+      "SH601919": { "score": 0.41, "relations": ["Marine Shipping"] }
+    },
+    "SH600000": {
+      "SH600016": {
+        "score": 0.14,
+        "relations": ["Banks\u2014Regional", "dispute", "SW2", "SW3"]
+      },
+      "SZ002812": {
+        "score": 0.16,
+        "relations": ["Banks\u2014Regional", "Hold_2_hop"]
+      },
+      "SH600150": { "score": 0.24, "relations": ["fall"] }
+    }
+  },
+  "2022-06-02": {
+    "SH600018": {
+      "SZ000001": { "score": 0.16, "relations": ["invest"] },
+      "SH601988": { "score": 0.23, "relations": ["fall"] },
+      "SH601919": { "score": 0.36, "relations": ["Marine Shipping"] }
+    },
+    "SH600000": {
+      "SZ300759": {
+        "score": 0.14,
+        "relations": ["Banks\u2014Regional", "Hold_2_hop"]
+      },
+      "SZ300866": {
+        "score": 0.15,
+        "relations": ["Banks\u2014Regional", "Hold_2_hop"]
+      },
+      "SH603517": {
+        "score": 0.16,
+        "relations": ["Banks\u2014Regional", "Hold_2_hop"]
+      }
+    }
+  }
+}

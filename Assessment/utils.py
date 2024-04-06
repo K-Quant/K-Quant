@@ -118,7 +118,7 @@ def parse_args():
 
     # model
     parser.add_argument('--model_name', default='relation_GATs')
-    parser.add_argument('--model_path', default='D:\ProjectCodes\K-Quant\parameter')
+    parser.add_argument('--model_path', default='..\parameter')
     parser.add_argument('--num_relation', type= int, default=102)
     parser.add_argument('--d_feat', type=int, default=6)
     parser.add_argument('--hidden_size', type=int, default=128)
@@ -158,12 +158,12 @@ def parse_args():
     parser.add_argument('--end_date', default='2019-01-05')
 
     # input for csi 300
-    parser.add_argument('--data_root', default='D:\ProjectCodes\K-Quant\Data')
-    parser.add_argument('--market_value_path', default= 'D:\ProjectCodes\K-Quant\Data\csi300_market_value_07to20.pkl')
-    parser.add_argument('--stock2concept_matrix', default='D:\ProjectCodes\K-Quant\Data\csi300_stock2concept.npy')
-    parser.add_argument('--stock2stock_matrix', default='D:\ProjectCodes\K-Quant\Data\csi300_multi_stock2stock_all.npy')
-    parser.add_argument('--stock_index', default='D:\ProjectCodes\K-Quant\Data\csi300_stock_index.npy')
-    parser.add_argument('--model_dir', default='D:\ProjectCodes\K-Quant\parameter')
+    parser.add_argument('--data_root', default='..\Data')
+    parser.add_argument('--market_value_path', default= '..\Data\csi300_market_value_07to20.pkl')
+    parser.add_argument('--stock2concept_matrix', default='..\Data\csi300_stock2concept.npy')
+    parser.add_argument('--stock2stock_matrix', default='..\Data\csi300_multi_stock2stock_all.npy')
+    parser.add_argument('--stock_index', default='..\Data\csi300_stock_index.npy')
+    parser.add_argument('--model_dir', default='..\parameter')
     parser.add_argument('--overwrite', action='store_true', default=False)
     parser.add_argument('--device', default='cpu')
     args = parser.parse_args()
