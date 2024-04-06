@@ -67,6 +67,7 @@ class Explanation:
     def get_explainer(self):
         if self.explainer_name == 'gnnExplainer':
             # self.explainer = GNNExplainer(self.pred_model, self.args)
+            # TODO: Note that Jiale convert it to SJsrc code
             self.explainer = gnnexplainer.GNNExplainer(self.pred_model, device=self.device)
 
         elif self.explainer_name == 'inputGradientExplainer':
@@ -121,56 +122,6 @@ class Explanation:
                                           'feature': feature.detach().numpy(),
                                           'stock_index_in_adj': stock_index.detach().numpy()}
         return exp_result_dict
-
-    # def explain_xpath(self, stock_list=None, get_fidelity=False, top_k=5, relation_list=None):
-    #     # xpathExplainer params:
-    #     #   stock_list->list of stock name, if None, explain all stocks
-    #     #   get_fidelity->bool, if True, return fidelity in the result dict
-    #     #  top_k->int, top k related stocks to be returned
-    #     # An example of exp_result_dict:
-    #     #  {'2019-01-02': {'SH600000': {'SH600015': {'score':0.22}, 'SH601166': {'score': 0.07}, ...}}}
-    #     #if relation_list is not None, then exp_result_dict:
-    #     #  {'2019-01-02': {'SH600000': {'SH600015': {'score':0.22, 'relations': [...]}, 'SH601166': {'score': 0.07, 'relations': [...]}, ...}}}
-    #     data_loader = self.data_loader
-    #     exp_result_dict = {}
-    #     fidelity_all = []
-    #     for i, slc in tqdm(self.data_loader.iter_daily(), total=self.data_loader.daily_length):
-    #         feature, label, market_value, stock_index, index = data_loader.get(slc)
-    #         date = datetime.datetime.date(index[0][0])
-    #         graph = self.graph_data[stock_index][:, stock_index]
-    #         dgl_graph = self.explainer.dense2dgl(graph, feature, self.explainer.device)
-    #         if self.explainer_name == 'xpathExplainer':
-    #             exp_result_dict[str(date)] = {}
-    #             if not stock_list:
-    #                 stock_id_list = torch.arange(len(stock_index))
-    #             else:
-    #                 stock_codes = index.get_level_values(1).unique().tolist()
-    #                 stock_id_list = [stock_codes.index(x) for x in stock_list]
-    #             original_pred = self.pred_model(feature, graph).detach().cpu().numpy()
-    #             for stock_id in stock_id_list:
-    #                 if get_fidelity:
-    #                     explanation, fidelity = \
-    #                         self.explainer.explain_dense(self.pred_model, original_pred, dgl_graph, graph,
-    #                                                           stock_id, get_fidelity=get_fidelity, top_k=top_k)
-    #                     fidelity_all.append(fidelity)
-    #                 else:
-    #                     explanation = \
-    #                         self.explainer.explain_dense(self.pred_model, original_pred, dgl_graph, graph,
-    #                                                           stock_id, top_k=top_k)
-    #                 res = {}
-    #                 for k, v in explanation.items():
-    #                     k_stock = index[k][1]
-    #                     res[k_stock] = {}
-    #                     res[k_stock]['score'] = v
-    #                     if relation_list:
-    #                         stock_relations = graph[stock_id, k, :].nonzero().squeeze().tolist()
-    #                         res[k_stock]['relations'] = np.array(relation_list)[stock_relations].tolist()
-    #                         if type(res[k_stock]['relations']) == str:
-    #                             res[k_stock]['relations'] = [res[k_stock]['relations']]
-    #                 exp_result_dict[str(date)][index[stock_id][1]] = res
-    #     if get_fidelity:
-    #         return exp_result_dict, np.mean(fidelity_all)
-    #     return exp_result_dict
     
     def explain_x(self, stock_list=None, get_fidelity=False, top_k=5, relation_list=None):
         # xpathExplainer params:
@@ -217,20 +168,36 @@ class Explanation:
                             if type(res[k_stock]['relations']) == str:
                                 res[k_stock]['relations'] = [res[k_stock]['relations']]
                 elif self.explainer_name == 'hencexExplainer':
+                    # for k in explanation:
+                    #     k_stock = index[k][1]
+                    #     res[k_stock] = []
+                    #     if relation_list:
+                    #         stock_relations = graph[stock_id, k, :].nonzero().squeeze().tolist()
+                    #         res[k_stock] = np.array(relation_list)[stock_relations].tolist()
+                    #         if type(res[k_stock]) == str:
+                    #             res[k_stock] = [res[k_stock]]
+
                     for k in explanation:
                         k_stock = index[k][1]
                         res[k_stock] = {}
                         if relation_list:
                             stock_relations = graph[stock_id, k, :].nonzero().squeeze().tolist()
-                            # res[k_stock] = np.array(relation_list)[stock_relations].tolist()
-                            # if type(res[k_stock]) == str:
-                            #     res[k_stock] = [res[k_stock]]
                             res[k_stock]['relations'] = np.array(relation_list)[stock_relations].tolist()
                             res[k_stock]['score'] = 1
                             if type(res[k_stock]['relations']) == str:
                                 res[k_stock]['relations'] = [ res[k_stock]['relations']]
+
                 else:
                     # for GNNExplainer, EffectExplainer
+                    # for k, v in explanation.items():
+                    #     k_stock = index[k][1]
+                    #     res[k_stock] = {}
+                    #     res[k_stock]['total_score'] = v[0]
+                    #     if relation_list:
+                    #         stock_relations = list(v[1].keys())
+                    #         res[k_stock]['individual scores'] = {}
+                    #         for r in stock_relations:
+                    #             res[k_stock]['individual scores'][relation_list[r]] = v[1][r]
                     for k, v in explanation.items():
                         k_stock = index[k][1]
                         res[k_stock] = {}
@@ -238,9 +205,6 @@ class Explanation:
                         if relation_list:
                             stock_relations = list(v[1].keys())
                             res[k_stock]['relations'] = [relation_list[r] for r in stock_relations]
-                            # res[k_stock]['individual scores'] = {}
-                            # for r in stock_relations:
-                            #     res[k_stock]['individual scores'][relation_list[r]] = v[1][r]
                 exp_result_dict[str(date)][index[stock_id][1]] = res
         if get_fidelity:
             return exp_result_dict, np.mean(fidelity_all)
