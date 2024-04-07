@@ -135,6 +135,7 @@ class Explanation:
         data_loader = self.data_loader
         exp_result_dict = {}
         fidelity_all = []
+        stock_rank = {}
         for i, slc in tqdm(self.data_loader.iter_daily(), total=self.data_loader.daily_length):
             feature, label, market_value, stock_index, index = data_loader.get(slc)
             date = datetime.datetime.date(index[0][0])
@@ -146,8 +147,13 @@ class Explanation:
             else:
                 stock_codes = index.get_level_values(1).unique().tolist()
                 stock_id_list = [stock_codes.index(x) for x in stock_list]
+
             original_preds = self.pred_model(feature, graph).detach().cpu().numpy()
-            for stock_id in stock_id_list:
+            stock_rank[str(date)] = {}
+            for idx, stock_id in enumerate(stock_id_list):
+                pred = original_preds[idx]
+                stock_rank[str(date)][stock_id] = pred
+
                 if get_fidelity:
                     explanation, fidelity = \
                         self.explainer.explain(original_preds, dgl_graph, graph,
@@ -157,6 +163,7 @@ class Explanation:
                     explanation = \
                         self.explainer.explain(original_preds, dgl_graph, graph, stock_id, top_k=top_k)
                 res = {}
+                res['pred_result'] = pred
                 if self.explainer_name == 'xpathExplainer':
                     for k, v in explanation.items():
                         k_stock = index[k][1]
@@ -185,7 +192,7 @@ class Explanation:
                             res[k_stock]['relations'] = np.array(relation_list)[stock_relations].tolist()
                             res[k_stock]['score'] = 1
                             if type(res[k_stock]['relations']) == str:
-                                res[k_stock]['relations'] = [ res[k_stock]['relations']]
+                                res[k_stock]['relations'] = [res[k_stock]['relations']]
 
                 else:
                     # for GNNExplainer, EffectExplainer
@@ -205,10 +212,16 @@ class Explanation:
                         if relation_list:
                             stock_relations = list(v[1].keys())
                             res[k_stock]['relations'] = [relation_list[r] for r in stock_relations]
+
                 exp_result_dict[str(date)][index[stock_id][1]] = res
+
+            stock_rank[date] = dict(sorted(stock_rank[str(date)].items(), key=lambda item: item[1], reverse=True))
+            stock_rank[date] = stock_rank[date].keys()
+
         if get_fidelity:
             return exp_result_dict, np.mean(fidelity_all)
-        return exp_result_dict
+
+        return exp_result_dict, stock_rank
 
     def save_explanation(self):
         file = r'{}/{}-{}.pkl'.format(self.args.expl_results_dir, self.explainer_name, self.year)

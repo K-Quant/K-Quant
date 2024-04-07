@@ -215,20 +215,23 @@ def search_stocks_prediction_explanation(args, exp_result_dict, event_data):
 
 def check_stocks_with_event(args, exp_result_dict, event_data):
     relative_stocks_dict = {}
-    for data, v in exp_result_dict.items():
-        relative_stocks_dict[data] ={}
+    for date, v in exp_result_dict.items():
+        relative_stocks_dict[date] = {}
         for stock_id, va in v.items():
-            relative_stocks_dict[data][stock_id] = {}
+
+            relative_stocks_dict[date][stock_id] = {}
             for other_stock_id, res in va.items():
-                relative_stocks_dict[data][stock_id][other_stock_id] ={
+                if other_stock_id == 'pred_result':
+                    continue
+                relative_stocks_dict[date][stock_id][other_stock_id] ={
                     'total_score': res['score'],
                     'relations': res['relations'],
-                    'events': get_events(data, args.seq_len, other_stock_id, event_data)
+                    'events': get_events(date, args.seq_len, other_stock_id, event_data)
                 }
 
+
+
     return relative_stocks_dict
-
-
 
 
 def run_xpath_explanation(args, event_data, get_fidelity=False, top_k=3):
@@ -237,11 +240,11 @@ def run_xpath_explanation(args, event_data, get_fidelity=False, top_k=3):
     explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
     with open(args.relation_name_list_file, 'r') as json_file:
         _relation_name_list = json.load(json_file)
-    res = explanation.explain_x(stock_list=args.check_stock_list, get_fidelity=get_fidelity,
+    res, stock_rank = explanation.explain_x(stock_list=args.check_stock_list, get_fidelity=get_fidelity,
                                          top_k=top_k, relation_list=_relation_name_list)
 
     res = check_stocks_with_event(args, res, event_data)
-    return res
+    return res, stock_rank
 
 
 def run_gnn_explainer(args, event_data, top_k=3):
@@ -250,10 +253,10 @@ def run_gnn_explainer(args, event_data, top_k=3):
     explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
     with open(args.relation_name_list_file, 'r') as json_file:
         _relation_name_list = json.load(json_file)
-    res = explanation.explain_x(stock_list=args.check_stock_list, top_k=top_k,
+    res, stock_rank = explanation.explain_x(stock_list=args.check_stock_list, top_k=top_k,
                                             relation_list=_relation_name_list)
     res = check_stocks_with_event(args, res, event_data)
-    return res
+    return res, stock_rank
 
 
 def run_hencex_explainer(args, event_data, top_k=3):
@@ -262,10 +265,10 @@ def run_hencex_explainer(args, event_data, top_k=3):
     explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
     with open(args.relation_name_list_file, 'r') as json_file:
         _relation_name_list = json.load(json_file)
-    res = explanation.explain_x(stock_list=args.check_stock_list, top_k=top_k,
+    res, stock_rank = explanation.explain_x(stock_list=args.check_stock_list, top_k=top_k,
                                             relation_list=_relation_name_list)
     res = check_stocks_with_event(args, res, event_data)
-    return res
+    return res, stock_rank
 
 
 def check_all_relative_stock(args, exp_result_dict, event_data):
@@ -289,12 +292,12 @@ def check_all_relative_stock(args, exp_result_dict, event_data):
 
         for i in range(num_stocks):
             stock_id = index_to_stock_id[stock_index_in_adj[i]]  # 获取股票编号
-            if stock_id not in args.check_stock_list:
-                continue
             relative_stocks_dict[date][stock_id] = {}
             related_stocks = []
             pred_result = pred[i]
             stock_rank[date][stock_id] = pred_result
+            if stock_id not in args.check_stock_list:
+                continue
             relative_stocks_dict[date][stock_id]['pred_result'] = pred_result
             for j in range(num_stocks):
                 other_stock_id = index_to_stock_id[stock_index_in_adj[j]]
@@ -416,9 +419,9 @@ if __name__ == '__main__':
     # print(exp_result_dict)
 
     # for xpath:
-    # args.explainer = 'xpathExplainer'
-    # exp_result_dict = run_xpath_explanation(args, events_data, get_fidelity=False, top_k=3)
-    # print(exp_result_dict)
+    args.explainer = 'xpathExplainer'
+    exp_result_dict, sorted_stock_rank = run_xpath_explanation(args, events_data, get_fidelity=False, top_k=3)
+    print(exp_result_dict)
 
     # print(exp_result_dict)
     # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True, top_k=3)
@@ -432,13 +435,13 @@ if __name__ == '__main__':
 
     # for GNNExplainer:
     # args.explainer = 'gnnExplainer'
-    # exp_result_dict = run_gnn_explainer(args, events_data, top_k=3)
+    # exp_result_dict, sorted_stock_rank = run_gnn_explainer(args, events_data, top_k=3)
     # print(exp_result_dict)
 
     # for EffectExplainer:
-    args.explainer = 'hencexExplainer'
-    exp_result_dict = run_hencex_explainer(args, events_data, top_k=3)
-    print(exp_result_dict)
+    # args.explainer = 'hencexExplainer'
+    # exp_result_dict, sorted_stock_rank = run_hencex_explainer(args, events_data, top_k=3)
+    # print(exp_result_dict)
 
     # print stock names
     # import pickle
