@@ -455,8 +455,7 @@ def get_stock_rank(sorted_stock_rank):
 if __name__ == "__main__":
     args = parse_args()
     args.start_date = "2022-01-01"
-    args.end_date = "2022-12-31"
-    args.model_name = "NRSR"
+    args.end_date = "2022-01-05"
     events_files = args.events_files
     with open(events_files, "r", encoding="utf-8") as f:
         events_data = json.load(f)
@@ -691,100 +690,102 @@ if __name__ == "__main__":
         "SZ300433",
         "SZ300498",
     ]
-    # list =
-    args.stock_list = stock_list
+    stock_list = [ "SH600000"]
+    args.check_stock_list  = stock_list
 
     # for inputGradient:
-
-    args.explainer = "inputGradientExplainer"
-    exp_result_dict, sorted_stock_rank, explanation = run_input_gradient_explanation(
-        args, events_data
-    )
-
-    json_rank = get_stock_rank(sorted_stock_rank)
-    print(json_rank)
-    with open("./outputDataNRSRRank.json", "w") as f:
-        json.dump(json_rank, f)
-
+    # args.model_name = "NRSR"
+    # args.explainer = "inputGradientExplainer"
+    # exp_result_dict, sorted_stock_rank, explanation = run_input_gradient_explanation(
+    #     args, events_data
+    # )
+    # json_rank = get_stock_rank(sorted_stock_rank)
+    # with open("./NRSR_input_Rank.json", "w") as f:
+    #     json.dump(json_rank, f)
     # for stock in stock_list:
     #     args.stock_list = [stock]
-
     #     exp_result_dict_sorted = search_stocks_prediction_explanation(
     #         args, exp_result_dict, events_data
     #     )
     #     exp_json_data = convert_float32_to_float(exp_result_dict_sorted)
     #     # print(exp_json_data)
-
-    #     with open("./outputDataNRSREventScore/" + stock + ".json", "w") as f:
+    #     with open("./NRSR_input/" + stock + ".json", "w") as f:
     #         json.dump(exp_json_data, f)
 
-    # # # for inputGradient:
-    args.model_name = "relation_GATs"
-    exp_result_dict, sorted_stock_rank,explanation = run_input_gradient_explanation(args, events_data)
-
-    # for inputGradient:
-    # args.explainer = 'inputGradientExplainer'
-    # exp_result_dict, sorted_stock_rank, explanation = run_input_gradient_explanation(args, events_data)
-    # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
-    # print(exp_result_dict)
-
-    # for xpath:
-    args.explainer = 'xpathExplainer'
-    exp_result_dict, sorted_stock_rank = run_xpath_explanation(args, events_data, get_fidelity=False, top_k=3)
-    print(exp_result_dict)
-
-    # print(exp_result_dict)
-    json_rank = get_stock_rank(sorted_stock_rank)
-    # print(json_rank)
-    with open("./outputDataGATsRank.json", "w") as f:
-        json.dump(json_rank, f)
-
+    # args.model_name = "relation_GATs"
+    # exp_result_dict, sorted_stock_rank,explanation = run_input_gradient_explanation(args, events_data)
+    # json_rank = get_stock_rank(sorted_stock_rank)
+    # with open("./GATs_input_Rank.json", "w") as f:
+    #     json.dump(json_rank, f)
     # for stock in stock_list:
     #     args.stock_list = [stock]
-
     #     exp_result_dict_sorted = search_stocks_prediction_explanation(
-    #         args, exp_result_dict,events_data
+    #         args, exp_result_dict, events_data
     #     )
     #     exp_json_data = convert_float32_to_float(exp_result_dict_sorted)
     #     # print(exp_json_data)
-
-    #     with open("./outputDataGATsEvent/" + stock + ".json", "w") as f:
+    #     with open("./GATs_input/" + stock + ".json", "w") as f:
     #         json.dump(exp_json_data, f)
 
-    # # for xpath:
-    # args.explainer = "xpathExplainer"
-    # args.stock_list = ["SH600000"]
-    # exp_result_dict = run_xpath_explanation(args, get_fidelity=False, top_k=3)
-    # # print(exp_result_dict)
-    # with open("xpath_GATs_event.json", "w") as f:
-    #     json.dump(exp_result_dict, f)
-
-    # exp_result_dict = search_stocks_prediction_explanation(args, exp_result_dict)
-    # # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
-    # print(exp_result_dict)
-
-    # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True, top_k=3)
-    # print(exp_result_dict, fidelity)
-
-    # save the explanation result
-    # exp_dict = {'relative_stocks_dict': relative_stocks_dict, 'score_dict': score_dict}
-    # save_path = r'.\results'
-    # with open(r'{}/{}.json'.format(save_path, args.explainer), 'w') as f:
-    #     json.dump(exp_dict, f)
-
+    # for xpath:
+    args.model_name = "NRSR"
+    args.explainer = 'xpathExplainer'
+    exp_result_dict, sorted_stock_rank = run_xpath_explanation(args, events_data, get_fidelity=False, top_k=3)
+    print(sorted_stock_rank)
+    json_rank = get_stock_rank(sorted_stock_rank)
+    with open("./NRSR_xpath_Rank.json", "w") as f:
+        json.dump(json_rank, f)
+    with open("./xpath_NRSR_event.json", "w") as f:
+        json.dump(exp_result_dict, f)
+        
+    args.model_name = "relation_GATs"
+    args.explainer = 'xpathExplainer'
+    exp_result_dict, sorted_stock_rank = run_xpath_explanation(args, events_data, get_fidelity=False, top_k=3)
+    print(exp_result_dict)
+    json_rank = get_stock_rank(sorted_stock_rank)
+    with open("./GATs_xpath_Rank.json", "w") as f:
+        json.dump(json_rank, f)
+    with open("./xpath_GATs_event.json", "w") as f:
+        json.dump(exp_result_dict, f)
+        
     # for GNNExplainer:
-    # args.explainer = 'gnnExplainer'
-    # exp_result_dict, sorted_stock_rank = run_gnn_explainer(args, events_data, top_k=3)
-    # print(exp_result_dict)
-
+    args.model_name = "NRSR"
+    args.explainer = 'gnnExplainer'
+    exp_result_dict, sorted_stock_rank = run_gnn_explainer(args, events_data, top_k=3)
+    print(exp_result_dict)
+    json_rank = get_stock_rank(sorted_stock_rank)
+    with open("./NRSR_gnn_Rank.json", "w") as f:
+        json.dump(json_rank, f)
+    with open("./gnn_NRSR_event.json", "w") as f:
+        json.dump(exp_result_dict, f)
+        
+    args.model_name = "relation_GATs"
+    args.explainer = 'gnnExplainer'
+    exp_result_dict, sorted_stock_rank = run_gnn_explainer(args, events_data, top_k=3)
+    print(exp_result_dict)
+    json_rank = get_stock_rank(sorted_stock_rank)
+    with open("./GATs_gnn_Rank.json", "w") as f:
+        json.dump(json_rank, f)
+    with open("./gnn_GATs_event.json", "w") as f:
+        json.dump(exp_result_dict, f)
+        
     # for EffectExplainer:
-    # args.explainer = 'hencexExplainer'
-    # exp_result_dict, sorted_stock_rank = run_hencex_explainer(args, events_data, top_k=3)
-    # print(exp_result_dict)
-
-    # print stock names
-    # import pickle
-    # stock_2_name = pickle.load(open(r'../Data/company_full_name.pkl', 'rb'))
-    # for date in exp_result_dict.keys():
-    #     stock_names = [stock_2_name[stock] for stock in exp_result_dict[date][args.stock_list[0]].keys()]
-    #     print(f'{date} {stock_2_name[args.stock_list[0]]}: {stock_names}')
+    args.model_name = "NRSR"
+    args.explainer = 'hencexExplainer'
+    exp_result_dict, sorted_stock_rank = run_hencex_explainer(args, events_data, top_k=3)
+    print(exp_result_dict)
+    json_rank = get_stock_rank(sorted_stock_rank)
+    with open("./NRSR_hencex_Rank.json", "w") as f:
+        json.dump(json_rank, f)
+    with open("./hencex_NRSR_event.json", "w") as f:
+        json.dump(exp_result_dict, f)
+        
+    args.model_name = "relation_GATs"
+    args.explainer = 'hencexExplainer'
+    exp_result_dict, sorted_stock_rank = run_hencex_explainer(args, events_data, top_k=3)
+    print(exp_result_dict)
+    json_rank = get_stock_rank(sorted_stock_rank)
+    with open("./GATs_hencex_Rank.json", "w") as f:
+        json.dump(json_rank, f)
+    with open("./hencex_GATs_event.json", "w") as f:
+        json.dump(exp_result_dict, f)
