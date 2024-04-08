@@ -236,12 +236,13 @@ def search_stocks_prediction_explanation(args, exp_result_dict, event_data):
         for date, result_data in exp_result_dict.items():
             # Check if date is within the specified range
             if args.start_date <= date <= args.end_date:
-                result_subset[stock_id][date] = {}
-                for key, res in result_data[stock_id].items():
-                    result_subset[stock_id][date][key] = {
-                        "explanation": res,
-                        "events": get_events(date, args.seq_len, key, event_data)
-                    }
+                if stock_id in result_data.keys():
+                    result_subset[stock_id][date] = {}
+                    for key, res in result_data[stock_id].items():
+                        result_subset[stock_id][date][key] = {
+                            "explanation": res,
+                            "events": get_events(date, args.seq_len, key, event_data)
+                        }
     return result_subset
 
 
@@ -260,8 +261,6 @@ def check_stocks_with_event(args, exp_result_dict, event_data):
                     'relations': res['relations'],
                     'events': get_events(date, args.seq_len, other_stock_id, event_data)
                 }
-
-
 
     return relative_stocks_dict
 
@@ -315,8 +314,6 @@ def check_all_relative_stock(args, exp_result_dict, event_data):
         pred = exp_result_dict[date]['pred']
         exp_graph = exp_result_dict[date]['expl_graph']
         stock_index_in_adj = exp_result_dict[date]['stock_index_in_adj']
-
-
         relative_stocks_dict[date] = {}
         stock_rank[date] = {}
 
@@ -455,7 +452,7 @@ def get_stock_rank(sorted_stock_rank):
 if __name__ == "__main__":
     args = parse_args()
     args.start_date = "2022-01-01"
-    args.end_date = "2022-01-05"
+    args.end_date = "2022-12-31"
     events_files = args.events_files
     with open(events_files, "r", encoding="utf-8") as f:
         events_data = json.load(f)
@@ -690,7 +687,7 @@ if __name__ == "__main__":
         "SZ300433",
         "SZ300498",
     ]
-    stock_list = [ "SH600000"]
+    # stock_list = [ "SH600000"]
     args.check_stock_list  = stock_list
 
     # for inputGradient:

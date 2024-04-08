@@ -1,0 +1,36 @@
+{
+  "2022-01-04": {
+    "SH600000": {
+      "SH601990": {
+        "total_score": 1,
+        "relations": ["Banks\u2014Regional", "Hold_2_hop"],
+        "events": {}
+      },
+      "SH603658": {
+        "total_score": 1,
+        "relations": ["Banks\u2014Regional", "Hold_2_hop"],
+        "events": {}
+      },
+      "SZ300014": {
+        "total_score": 1,
+        "relations": ["Banks\u2014Regional", "Hold_2_hop"],
+        "events": {}
+      }
+    }
+  },
+  "2022-01-05": {
+    "SH600000": {
+      "SH603019": { "total_score": 1, "relations": ["fall"], "events": {} },
+      "SH603486": {
+        "total_score": 1,
+        "relations": ["Banks\u2014Regional", "Hold_2_hop"],
+        "events": {}
+      },
+      "SH688111": {
+        "total_score": 1,
+        "relations": ["Banks\u2014Regional", "Hold_2_hop"],
+        "events": {}
+      }
+    }
+  }
+}
