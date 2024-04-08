@@ -136,6 +136,9 @@ class Explanation:
         exp_result_dict = {}
         fidelity_all = []
         stock_rank = {}
+        _stock_index = np.load(self.args.stock_index, allow_pickle=True).item()
+        index_to_stock_id = {index: stock_id for stock_id, index in _stock_index.items()}
+
         for i, slc in tqdm(self.data_loader.iter_daily(), total=self.data_loader.daily_length):
             feature, label, market_value, stock_index, index = data_loader.get(slc)
             date = datetime.datetime.date(index[0][0])
@@ -150,9 +153,14 @@ class Explanation:
 
             original_preds = self.pred_model(feature, graph).detach().cpu().numpy()
             stock_rank[str(date)] = {}
-            for idx, stock_id in enumerate(stock_id_list):
+            s_r = {}
+            # 获取股票预测结果
+            for idx, stock_id_in_adj in enumerate(list(stock_index)):
+                stock_id = index_to_stock_id[int(stock_id_in_adj)]
                 pred = original_preds[idx]
-                stock_rank[str(date)][stock_id] = pred
+                s_r[stock_id] = pred
+
+            for idx, stock_id in enumerate(stock_id_list):
 
                 if get_fidelity:
                     explanation, fidelity = \
@@ -212,11 +220,9 @@ class Explanation:
                         if relation_list:
                             stock_relations = list(v[1].keys())
                             res[k_stock]['relations'] = [relation_list[r] for r in stock_relations]
-
                 exp_result_dict[str(date)][index[stock_id][1]] = res
-
-            stock_rank[date] = dict(sorted(stock_rank[str(date)].items(), key=lambda item: item[1], reverse=True))
-            stock_rank[date] = stock_rank[date].keys()
+            sorted_stock_rank = dict(sorted(s_r.items(), key=lambda item: item[1], reverse=True))
+            stock_rank[str(date)] = list(sorted_stock_rank.keys())
 
         if get_fidelity:
             return exp_result_dict, np.mean(fidelity_all)

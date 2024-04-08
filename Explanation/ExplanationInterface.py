@@ -229,8 +229,6 @@ def check_stocks_with_event(args, exp_result_dict, event_data):
                     'events': get_events(date, args.seq_len, other_stock_id, event_data)
                 }
 
-
-
     return relative_stocks_dict
 
 
@@ -283,8 +281,6 @@ def check_all_relative_stock(args, exp_result_dict, event_data):
         pred = exp_result_dict[date]['pred']
         exp_graph = exp_result_dict[date]['expl_graph']
         stock_index_in_adj = exp_result_dict[date]['stock_index_in_adj']
-
-
         relative_stocks_dict[date] = {}
         stock_rank[date] = {}
 
@@ -421,7 +417,7 @@ if __name__ == '__main__':
     # for xpath:
     args.explainer = 'xpathExplainer'
     exp_result_dict, sorted_stock_rank = run_xpath_explanation(args, events_data, get_fidelity=False, top_k=3)
-    print(exp_result_dict)
+    print(sorted_stock_rank)
 
     # print(exp_result_dict)
     # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True, top_k=3)
