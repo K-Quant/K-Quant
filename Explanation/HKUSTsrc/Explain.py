@@ -227,6 +227,9 @@ class Explanation:
                             stock_relations = list(v[1].keys())
                             res[k_stock]['relations'] = [relation_list[r] for r in stock_relations]
                 exp_result_dict[str(date)][index[stock_id][1]] = res
+
+            sorted_stock_rank = dict(sorted(s_r.items(), key=lambda item: item[1], reverse=True))
+            stock_rank[str(date)] = list(sorted_stock_rank.keys())
             if len(exception_stocks) > 0:
                 # print('Exception Stocks: {}'.format(exception_stocks))
                 for stock in exception_stocks:
