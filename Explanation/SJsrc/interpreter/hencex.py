@@ -214,7 +214,7 @@ class HencexExplainer():
             return np.array(feats_to_pick), basket[np.array(feats_to_pick)]
 
     def explain(self, original_preds, g, rel_matrix, stock_id, top_k,
-                 n_cat_value=3, num_samples=1000, k=1, p_perturb=0.5, p_threshold=0.1, pred_threshold=0.01):
+                 n_cat_value=3, num_samples=1000, k=1, p_perturb=0.5, p_threshold=0.2, pred_threshold=0.01):
         target_id = stock_id
         g_c = dgl.khop_in_subgraph(g, target_id, 1)[0].to(self.device)
         new_target_id = g_c.ndata['_ID'].tolist().index(target_id)

@@ -453,9 +453,9 @@ class xPath_Dense():
                             new_edges[1] += [tid]
                         else:
                             new_edges[1] += [proxy_ids[i+1]]
-        if del_id>=0:
-            sg_edges[0].pop(del_id)
-            sg_edges[1].pop(del_id)
+        # if del_id>=0:
+        #     sg_edges[0].pop(del_id)
+        #     sg_edges[1].pop(del_id)
             #print(f'adding {new_edges[etp][0]}->{new_edges[etp][1]}')
         # sg_edges[0] += new_edges[0]
         # sg_edges[1] += new_edges[1]
@@ -515,6 +515,8 @@ class xPath_Dense():
                     path_key = tuple(p)
                     shadow_graph = self.get_proxy_homograph(g_c, p)
                     pred = model(shadow_graph.ndata['nfeat'], self.sparse2dense(rel_matrix, shadow_graph)).detach().cpu().numpy()
+                    if pred.shape == ():
+                        pred = [pred]
                     tmp = abs(original_pred * self.scale - pred[new_target_id] * self.scale)
                     path2s[path_key] = tmp
                     top_k_p[path_key] = tmp
