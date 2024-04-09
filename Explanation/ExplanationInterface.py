@@ -68,10 +68,10 @@ def parse_args():
     parser.add_argument('--data_root', default='D:\Research\Fintech\K-Quant\Data')
     parser.add_argument('--market_value_path', default= 'D:\Research\Fintech\K-Quant\Data\csi300_market_value_07to20.pkl')
     parser.add_argument('--stock2concept_matrix', default='D:\ProjectCodes\K-Quant\Data\csi300_stock2concept.npy')
-    parser.add_argument('--stock2stock_matrix', default='D:\Research\Fintech\K-Quant\Data\csi300_multi_stock2stock_all.npy')
+    parser.add_argument('--stock2stock_matrix', default='D:\Research\Fintech\K-Quant\Data\csi300_multi_stock2stock_hidy_2023.npy')
 
 
-    parser.add_argument('--stock_index', default='D:\Research\Fintech\K-Quant\Data\csi300_stock_index.npy')
+    parser.add_argument('--stock_index', default='D:\Research\Fintech\K-Quant\Data\csi300_stock_index_2023.npy')
     parser.add_argument('--model_dir', default='D:\Research\Fintech\K-Quant\parameter')
     parser.add_argument('--events_files', default='D:\Research\Fintech\K-Quant\Data\event_data_sigle_stock.json')
 

@@ -179,7 +179,7 @@ class Explanation:
                         res[k_stock]['score'] = v
                         if relation_list:
                             stock_relations = graph[stock_id, k, :].nonzero().squeeze().tolist()
-                            res[k_stock]['relations'] = np.array(relation_list)[stock_relations].tolist()
+                            res[k_stock]['relations'] = get_relation(relation_list, stock_relations)
                             if type(res[k_stock]['relations']) == str:
                                 res[k_stock]['relations'] = [res[k_stock]['relations']]
                 elif self.explainer_name == 'hencexExplainer':
@@ -382,6 +382,26 @@ class Explanation:
         for edge in comp_edges:
             origin_graph[edge[0], edge[1]] = 0
         return origin_graph
+
+
+def get_relation(relation_list, stock_relations):
+    relations = []
+    try:
+        if type(stock_relations) == list:
+            for s_re in stock_relations:
+                if s_re > len(relation_list) - 1:
+                    relations.append(relation_list[-1])
+                else:
+                    relations.append(relation_list[s_re])
+        else:
+            if stock_relations > len(relation_list) - 1:
+                relations.append(relation_list[-1])
+            else:
+                relations.append(relation_list[stock_relations])
+    except:
+        print(stock_relations)
+
+    return relations
 
 
 def stock_2_index(stock, stock_index_in_adj, stock_index):
