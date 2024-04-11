@@ -734,7 +734,7 @@ if __name__ == "__main__":
         json.dump(json_rank, f)
     with open("./xpath_NRSR_event.json", "w") as f:
         json.dump(exp_result_dict, f)
-        
+
     args.model_name = "relation_GATs"
     args.explainer = 'xpathExplainer'
     exp_result_dict, sorted_stock_rank = run_xpath_explanation(args, events_data, get_fidelity=False, top_k=3)
@@ -755,7 +755,7 @@ if __name__ == "__main__":
         json.dump(json_rank, f)
     with open("./gnn_NRSR_event.json", "w") as f:
         json.dump(exp_result_dict, f)
-        
+
     args.model_name = "relation_GATs"
     args.explainer = 'gnnExplainer'
     exp_result_dict, sorted_stock_rank = run_gnn_explainer(args, events_data, top_k=3)

@@ -176,7 +176,7 @@ class Explanation:
                     fidelity_all.append(fidelity)
                 else:
                     explanation = \
-                        self.explainer.explain(original_preds, dgl_graph, graph, stock_id, top_k=top_k)
+                        self.explainer.explain(original_preds, dgl_graph, graph, stock_id=83, top_k=top_k)
                 res = {}
                 res['pred_result'] = pred
                 if self.explainer_name == 'xpathExplainer':

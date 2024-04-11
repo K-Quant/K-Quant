@@ -112,7 +112,7 @@ class HencexExplainer():
         # how_many_more = np.where(bar * num_samples - counts < 0, 0, np.ceil(bar * num_samples - counts)).astype(int)
         # print(how_many_more)
 
-    def basketSearching(self, new_target_id, g_c, p_threshold=0.05):
+    def basketSearching(self, new_target_id, g_c, p_threshold):
         basket = {}
         g_c = g_c.to_networkx()
         target = new_target_id
@@ -130,7 +130,11 @@ class HencexExplainer():
                 feat_p_values = [
                     g_sq(X=ind_ori_to_sub['target'], Y=ind_ori_to_sub[feat_], Z=[], data=pdData, boolean=False)[1] for
                     feat_ in ['f' + str(i) for i in range(self.sampled_data[u].shape[1])]]
-                feats_to_pick = [i for i, x in enumerate(feat_p_values) if x < p_threshold]
+                # a lower p_threshold will lead to basket = {} for some nodes
+                if u == target:
+                    feats_to_pick = [i for i, x in enumerate(feat_p_values)]
+                else:
+                    feats_to_pick = [i for i, x in enumerate(feat_p_values) if x < p_threshold]
                 if len(feats_to_pick) > 0:
                     basket[u] = np.array(feats_to_pick)
                     U = U.union(set(g_c[u]))
@@ -214,7 +218,7 @@ class HencexExplainer():
             return np.array(feats_to_pick), basket[np.array(feats_to_pick)]
 
     def explain(self, original_preds, g, rel_matrix, stock_id, top_k,
-                 n_cat_value=3, num_samples=1000, k=1, p_perturb=0.5, p_threshold=0.1, pred_threshold=0.01):
+                 n_cat_value=3, num_samples=1000, k=1, p_perturb=0.5, p_threshold=0.3, pred_threshold=0.01):
         target_id = stock_id
         g_c = dgl.khop_in_subgraph(g, target_id, 1)[0].to(self.device)
         new_target_id = g_c.ndata['_ID'].tolist().index(target_id)
