@@ -78,6 +78,8 @@ class GNNExplainer:
 
         edge_mask = self.edge_mask.sigmoid().detach().cpu()
         # get the top k edges
+        if top_k > g_c.num_nodes():
+            top_k = g_c.num_nodes()
         topk_v, topk_i = edge_mask.sum(2)[:,new_target_id].topk(top_k)
         explanation = {origin_ids[topk_i[i]]: [topk_v[i].item(), edge_mask[topk_i[i], new_target_id, :]] for i in range(top_k)}
         for k, v in explanation.items():
