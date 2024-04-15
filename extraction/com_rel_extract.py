@@ -36,3 +36,4 @@ def run_extraction(original_news_path, extracted_data_path, input_mode):
     else:
         print("None triples extracted!")
     return
+# update 2024-04-15 08:03:19
