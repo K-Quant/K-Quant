@@ -423,12 +423,6 @@ if __name__ == '__main__':
     # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True, top_k=3)
     # print(exp_result_dict, fidelity)
 
-    # save the explanation result
-    # exp_dict = {'relative_stocks_dict': relative_stocks_dict, 'score_dict': score_dict}
-    # save_path = r'.\results'
-    # with open(r'{}/{}.json'.format(save_path, args.explainer), 'w') as f:
-    #     json.dump(exp_dict, f)
-
     # for GNNExplainer:
     # args.explainer = 'gnnExplainer'
     # exp_result_dict, sorted_stock_rank = run_gnn_explainer(args, events_data, top_k=3)
@@ -440,8 +434,16 @@ if __name__ == '__main__':
     # print(exp_result_dict)
 
     # print stock names
-    # import pickle
-    # stock_2_name = pickle.load(open(r'../Data/company_full_name.pkl', 'rb'))
-    # for date in exp_result_dict.keys():
-    #     stock_names = [stock_2_name[stock] for stock in exp_result_dict[date][args.stock_list[0]].keys()]
-    #     print(f'{date} {stock_2_name[args.stock_list[0]]}: {stock_names}')
+    import pickle
+    stock_2_name = pickle.load(open(r'../Data/company_full_name.pkl', 'rb'))
+    for date in exp_result_dict.keys():
+        stock_names = []
+        for target_stock in exp_result_dict[date].keys():
+            for stock in exp_result_dict[date][target_stock].keys():
+                if stock in stock_2_name.keys():
+                    stock_names.append(stock_2_name[stock])
+            print(f'{date} {stock_2_name[target_stock]}: {stock_names}')
+
+    # save the explanation result
+    # with open(f'../results/{args.explainer}_{args.model_name}.json', 'w') as f:
+    #     json.dump(exp_result_dict, f)

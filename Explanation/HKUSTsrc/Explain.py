@@ -145,12 +145,18 @@ class Explanation:
             graph = self.graph_data[stock_index][:, stock_index]
             dgl_graph = self.explainer.dense2sparse(graph, feature, self.explainer.device)
             exp_result_dict[str(date)] = {}
+            # for exception handling
+            exception_stocks = []
             if not stock_list:
                 stock_id_list = torch.arange(len(stock_index))
             else:
                 stock_codes = index.get_level_values(1).unique().tolist()
-                stock_id_list = [stock_codes.index(x) for x in stock_list]
-
+                stock_id_list = []
+                for stock in stock_list:
+                    if stock in stock_codes:
+                        stock_id_list.append(stock_codes.index(stock))
+                    else:
+                        exception_stocks.append(stock)
             original_preds = self.pred_model(feature, graph).detach().cpu().numpy()
             stock_rank[str(date)] = {}
             s_r = {}
@@ -221,9 +227,13 @@ class Explanation:
                             stock_relations = list(v[1].keys())
                             res[k_stock]['relations'] = [relation_list[r] for r in stock_relations]
                 exp_result_dict[str(date)][index[stock_id][1]] = res
+
             sorted_stock_rank = dict(sorted(s_r.items(), key=lambda item: item[1], reverse=True))
             stock_rank[str(date)] = list(sorted_stock_rank.keys())
-
+            if len(exception_stocks) > 0:
+                # print('Exception Stocks: {}'.format(exception_stocks))
+                for stock in exception_stocks:
+                    exp_result_dict[str(date)][stock] = {}
         if get_fidelity:
             return exp_result_dict, np.mean(fidelity_all)
 
