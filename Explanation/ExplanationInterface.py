@@ -68,10 +68,10 @@ def parse_args():
     parser.add_argument('--data_root', default='D:\Research\Fintech\K-Quant\Data')
     parser.add_argument('--market_value_path', default= 'D:\Research\Fintech\K-Quant\Data\csi300_market_value_07to20.pkl')
     parser.add_argument('--stock2concept_matrix', default='D:\ProjectCodes\K-Quant\Data\csi300_stock2concept.npy')
-    parser.add_argument('--stock2stock_matrix', default='D:\Research\Fintech\K-Quant\Data\csi300_multi_stock2stock_hidy_2023.npy')
+    parser.add_argument('--stock2stock_matrix', default='D:\Research\Fintech\K-Quant\Data\csi300_multi_stock2stock_hidy_2024.npy')
 
 
-    parser.add_argument('--stock_index', default='D:\Research\Fintech\K-Quant\Data\csi300_stock_index_2023.npy')
+    parser.add_argument('--stock_index', default='D:\Research\Fintech\K-Quant\Data\csi300_stock_index_2024.npy')
     parser.add_argument('--model_dir', default='D:\Research\Fintech\K-Quant\parameter')
     parser.add_argument('--events_files', default='D:\Research\Fintech\K-Quant\Data\event_data_sigle_stock.json')
 
@@ -79,7 +79,7 @@ def parse_args():
     parser.add_argument('--device', default='cpu')
 
     # relation
-    parser.add_argument('--relation_name_list_file', default=r'D:\Research\Fintech\K-Quant\Data\relation_name_list.json')
+    parser.add_argument('--relation_name_list_file', default=r'D:\Research\Fintech\K-Quant\Data\new_relation_name_list2024.json')
 
     args = parser.parse_args()
 
@@ -271,7 +271,7 @@ def run_hencex_explainer(args, event_data, top_k=3):
 
 def check_all_relative_stock(args, exp_result_dict, event_data):
     _stock_index = np.load(args.stock_index, allow_pickle=True).item()
-    with open(args.relation_name_list_file, 'r') as json_file:
+    with open(args.relation_name_list_file, 'r',encoding='utf-8') as json_file:
         _relation_name_list = json.load(json_file)
     index_to_stock_id = {index: stock_id for stock_id, index in _stock_index.items()}
 
@@ -292,8 +292,8 @@ def check_all_relative_stock(args, exp_result_dict, event_data):
             related_stocks = []
             pred_result = pred[i]
             stock_rank[date][stock_id] = pred_result
-            if stock_id not in args.check_stock_list:
-                continue
+            # if stock_id not in args.check_stock_list:
+            #     continue
             relative_stocks_dict[date][stock_id]['pred_result'] = pred_result
             for j in range(num_stocks):
                 other_stock_id = index_to_stock_id[stock_index_in_adj[j]]
@@ -402,22 +402,22 @@ if __name__ == '__main__':
     args.start_date = '2022-01-10'
     args.end_date = '2022-01-11'
     args.check_stock_list = ['SH600383']
-    args.model_name = 'NRSR'
+    args.model_name =  'relation_GATs'
     events_files = args.events_files
     # args.date_list = ['2022-06-02']
     with open(events_files, 'r', encoding='utf-8') as f:
         events_data = json.load(f)
 
-    # for inputGradient:
-    # args.explainer = 'inputGradientExplainer'
-    # exp_result_dict, sorted_stock_rank, explanation = run_input_gradient_explanation(args, events_data)
+    args.explainer = 'inputGradientExplainer'
+    exp_result_dict, sorted_stock_rank, explanation = run_input_gradient_explanation(args, events_data)
     # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
-    # print(exp_result_dict)
-
+    print(exp_result_dict)
+    #
     # for xpath:
-    args.explainer = 'xpathExplainer'
-    exp_result_dict, sorted_stock_rank = run_xpath_explanation(args, events_data, get_fidelity=False, top_k=3)
-    print(sorted_stock_rank)
+    # for inputGradient:
+    # args.explainer = 'xpathExplainer'
+    # exp_result_dict, sorted_stock_rank = run_xpath_explanation(args, events_data, get_fidelity=False, top_k=3)
+    # print(sorted_stock_rank)
 
     # print(exp_result_dict)
     # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True, top_k=3)
