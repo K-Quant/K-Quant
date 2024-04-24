@@ -18,3 +18,4 @@ class ranking_layer(nn.Module):
 
     def forward(self, x):
         return self.pred_layer(x)  # shape [B, N]
+# update 2024-04-24 20:50:14
