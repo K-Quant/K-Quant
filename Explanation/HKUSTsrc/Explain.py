@@ -148,7 +148,7 @@ class Explanation:
             # for exception handling
             exception_stocks = []
             if not stock_list:
-                stock_id_list = torch.arange(len(stock_index))
+                stock_id_list = torch.arange(len(stock_index)).numpy().tolist()
             else:
                 stock_codes = index.get_level_values(1).unique().tolist()
                 stock_id_list = []
@@ -235,9 +235,9 @@ class Explanation:
                 for stock in exception_stocks:
                     exp_result_dict[str(date)][stock] = {}
         if get_fidelity:
-            return exp_result_dict, np.mean(fidelity_all)
+            return exp_result_dict, stock_rank, np.mean(fidelity_all)
 
-        return exp_result_dict, stock_rank
+        return exp_result_dict, stock_rank, None
 
     def save_explanation(self):
         file = r'{}/{}-{}.pkl'.format(self.args.expl_results_dir, self.explainer_name, self.year)

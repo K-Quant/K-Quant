@@ -313,7 +313,7 @@ class xPath_Dense():
         self.one_hop_sampler = dgl.dataloading.MultiLayerFullNeighborSampler(1)
         self.target_ntype = 'stock'
         self.random_seed = 2023
-        self.scale = 10000
+        self.scale = 100
         random.seed(self.random_seed)
         torch.manual_seed(self.random_seed)
         dgl.seed(self.random_seed)
@@ -564,7 +564,7 @@ class xPath_Dense():
             g_m = dgl.node_subgraph(g, exp_nodes)
             g_m_target_id = g_m.ndata[dgl.NID].tolist().index(target_id)
             g_m_pred = model(g_m.ndata['nfeat'], self.sparse2dense(rel_matrix, g_m)).detach().cpu().numpy()[g_m_target_id]
-            fidelity = abs(original_pred - g_m_pred)
+            fidelity = abs(original_pred - g_m_pred) / self.scale
             return explanation, fidelity
 
         return explanation
