@@ -1,5 +1,5 @@
 from Assessment.Credibility_assessment import run_credibility_assessment
-# from Assessment.Performance_assessment import run_performance_assessment
+from Assessment.Performance_assessment import run_performance_assessment
 from Assessment.run_assessment import prepare_data_and_model, test_get_stocks_recommendation
 from Assessment.utils import parse_args, normalize_assessment_results_list
 
