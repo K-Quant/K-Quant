@@ -563,7 +563,10 @@ class xPath_Dense():
                 exp_nodes.append(target_id)
             g_m = dgl.node_subgraph(g, exp_nodes)
             g_m_target_id = g_m.ndata[dgl.NID].tolist().index(target_id)
-            g_m_pred = model(g_m.ndata['nfeat'], self.sparse2dense(rel_matrix, g_m)).detach().cpu().numpy()[g_m_target_id]
+            g_m_pred = model(g_m.ndata['nfeat'], self.sparse2dense(rel_matrix, g_m)).detach().cpu().numpy()
+            if g_m_pred.shape == ():
+                g_m_pred = [g_m_pred]
+            g_m_pred = g_m_pred[g_m_target_id]
             fidelity = abs(original_pred - g_m_pred) / self.scale
             return explanation, fidelity
 

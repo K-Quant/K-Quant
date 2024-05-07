@@ -36,7 +36,7 @@ def cal_explainable(param_dict, data_loader, device, explanation_model='xpathExp
     explanation = Explanation(param_args, data_loader, explainer_name=explanation_model)
 
     if explanation_model == 'xpathExplainer':
-        _, fidelity = explanation.explain_x(get_fidelity=True, top_k=5)
+        _, _, fidelity = explanation.explain_x(get_fidelity=True, top_k=5)
     else:
         exp_result_dict = explanation.explain()
         # check_all_relative_stock(param_args, exp_result_dict)
