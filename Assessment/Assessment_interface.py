@@ -7,11 +7,11 @@ if __name__ == '__main__':
     args = parse_args()
 
     model_list = ['LSTM', 'GRU', 'MLP', "NRSR", 'relation_GATs']
-    explanation_model = "inputGradientExplainer"
+    explanation_model = 'xpathExplainer'
     seq_len_list = [30, 60]
 
-    args.start_date = '2019-06-01'
-    args.end_date = '2019-06-15'
+    args.start_date = '2022-06-01'
+    args.end_date = '2022-06-02'
 
     args.seq_len = 60
     c_a_r_list = []
@@ -73,25 +73,25 @@ if __name__ == '__main__':
 
     # 下面开始计算性能评价
     #更新时间表述
-    args.start_date = args.start_date.replace('-', '')
-    args.end_date = args.end_date.replace('-', '')
-    args.return_preference = 0 # 输入回报偏好
-    args.risk_preference = 90 # 输入风险偏好
-    p_a_r_list = []
-    for select_dict in select_dict_list:
-        h_p_dict = {
-                        "select_dict": select_dict,
-                        "return_preference": args.return_preference,
-                        "seq_len": args.risk_preference,
-                        "start_date": args.start_date,
-                        "end_date": args.end_date,
-
-                    }
-        performance_assessment_results_dict = run_performance_assessment(args, select_dict) # 输出性能得分
-        print(performance_assessment_results_dict)
-        p_a_r_list.append((h_p_dict, performance_assessment_results_dict))
-
-    n_p_a_r_list = normalize_assessment_results_list(p_a_r_list, num_selection=5)
-    print(n_p_a_r_list)
+    # args.start_date = args.start_date.replace('-', '')
+    # args.end_date = args.end_date.replace('-', '')
+    # args.return_preference = 0 # 输入回报偏好
+    # args.risk_preference = 90 # 输入风险偏好
+    # p_a_r_list = []
+    # for select_dict in select_dict_list:
+    #     h_p_dict = {
+    #                     "select_dict": select_dict,
+    #                     "return_preference": args.return_preference,
+    #                     "seq_len": args.risk_preference,
+    #                     "start_date": args.start_date,
+    #                     "end_date": args.end_date,
+    #
+    #                 }
+    #     performance_assessment_results_dict = run_performance_assessment(args, select_dict) # 输出性能得分
+    #     print(performance_assessment_results_dict)
+    #     p_a_r_list.append((h_p_dict, performance_assessment_results_dict))
+    #
+    # n_p_a_r_list = normalize_assessment_results_list(p_a_r_list, num_selection=5)
+    # print(n_p_a_r_list)
 
 

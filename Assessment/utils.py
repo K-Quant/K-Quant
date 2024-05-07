@@ -119,7 +119,7 @@ def parse_args():
     # model
     parser.add_argument('--model_name', default='relation_GATs')
     parser.add_argument('--model_path', default='D:\Research\Fintech\K-Quant\parameter')
-    parser.add_argument('--num_relation', type= int, default=102)
+    parser.add_argument('--num_relation', type= int, default=134)
     parser.add_argument('--d_feat', type=int, default=6)
     parser.add_argument('--hidden_size', type=int, default=128)
     parser.add_argument('--num_layers', type=int, default=2)
@@ -164,8 +164,8 @@ def parse_args():
     parser.add_argument('--stock2concept_matrix', default='D:\ProjectCodes\K-Quant\Data\csi300_stock2concept.npy')
 
 
-    parser.add_argument('--stock2stock_matrix', default='D:\Research\Fintech\K-Quant\Data\csi300_multi_stock2stock_all.npy')
-    parser.add_argument('--stock_index', default='D:\Research\Fintech\K-Quant\Data\csi300_stock_index.npy')
+    parser.add_argument('--stock2stock_matrix', default='D:\Research\Fintech\K-Quant\Data\csi300_multi_stock2stock_hidy_2024.npy')
+    parser.add_argument('--stock_index', default='D:\Research\Fintech\K-Quant\Data\csi300_stock_index_2024.npy')
     parser.add_argument('--model_dir', default='D:\Research\Fintech\K-Quant\parameter')
     parser.add_argument('--overwrite', action='store_true', default=False)
     parser.add_argument('--device', default='cpu')

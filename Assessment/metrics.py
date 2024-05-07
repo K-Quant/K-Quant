@@ -5,6 +5,7 @@ from sklearn.metrics import ndcg_score
 
 from Explanation.ExplanationInterface import evaluate_fidelity, check_all_relative_stock
 from Explanation.HKUSTsrc import Explanation
+from Explanation.SJsrc import *
 
 
 def cal_assessment(param_dict, data_loader, model, explanation_model, device):
@@ -35,7 +36,7 @@ def cal_explainable(param_dict, data_loader, device, explanation_model='xpathExp
     explanation = Explanation(param_args, data_loader, explainer_name=explanation_model)
 
     if explanation_model == 'xpathExplainer':
-        _, fidelity = explanation.explain_xpath(get_fidelity=True, top_k=5)
+        _, fidelity = explanation.explain_x(get_fidelity=True, top_k=5)
     else:
         exp_result_dict = explanation.explain()
         # check_all_relative_stock(param_args, exp_result_dict)

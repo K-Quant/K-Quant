@@ -401,8 +401,8 @@ if __name__ == '__main__':
     args = parse_args()
     args.start_date = '2022-01-10'
     args.end_date = '2022-01-11'
-    args.check_stock_list = ['SH600383']
-    args.model_name =  'relation_GATs'
+    # args.check_stock_list = ['SH600383']
+    args.model_name =  'NRSR'
     events_files = args.events_files
     # args.date_list = ['2022-06-02']
     with open(events_files, 'r', encoding='utf-8') as f:
@@ -411,8 +411,10 @@ if __name__ == '__main__':
     args.explainer = 'inputGradientExplainer'
     exp_result_dict, sorted_stock_rank, explanation = run_input_gradient_explanation(args, events_data)
     # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
+    with open(r"D:\Research\Fintech\K-Quant\test.json", 'w', encoding='utf-8') as f:
+        json.dump(exp_result_dict, f)
     print(exp_result_dict)
-    #
+
     # for xpath:
     # for inputGradient:
     # args.explainer = 'xpathExplainer'
@@ -434,15 +436,15 @@ if __name__ == '__main__':
     # print(exp_result_dict)
 
     # print stock names
-    import pickle
-    stock_2_name = pickle.load(open(r'../Data/company_full_name.pkl', 'rb'))
-    for date in exp_result_dict.keys():
-        stock_names = []
-        for target_stock in exp_result_dict[date].keys():
-            for stock in exp_result_dict[date][target_stock].keys():
-                if stock in stock_2_name.keys():
-                    stock_names.append(stock_2_name[stock])
-            print(f'{date} {stock_2_name[target_stock]}: {stock_names}')
+    # import pickle
+    # stock_2_name = pickle.load(open(r'../Data/company_full_name.pkl', 'rb'))
+    # for date in exp_result_dict.keys():
+    #     stock_names = []
+    #     for target_stock in exp_result_dict[date].keys():
+    #         for stock in exp_result_dict[date][target_stock].keys():
+    #             if stock in stock_2_name.keys():
+    #                 stock_names.append(stock_2_name[stock])
+    #         print(f'{date} {stock_2_name[target_stock]}: {stock_names}')
 
     # save the explanation result
     # with open(f'../results/{args.explainer}_{args.model_name}.json', 'w') as f:
