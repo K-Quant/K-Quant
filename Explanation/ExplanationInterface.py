@@ -408,12 +408,12 @@ if __name__ == '__main__':
     with open(events_files, 'r', encoding='utf-8') as f:
         events_data = json.load(f)
 
-    args.explainer = 'inputGradientExplainer'
-    exp_result_dict, sorted_stock_rank, explanation = run_input_gradient_explanation(args, events_data)
-    # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
-    with open(r"D:\Research\Fintech\K-Quant\test.json", 'w', encoding='utf-8') as f:
-        json.dump(exp_result_dict, f)
-    print(exp_result_dict)
+    # args.explainer = 'inputGradientExplainer'
+    # exp_result_dict, sorted_stock_rank, explanation = run_input_gradient_explanation(args, events_data)
+    # # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
+    # with open(r"D:\Research\Fintech\K-Quant\test.json", 'w', encoding='utf-8') as f:
+    #     json.dump(exp_result_dict, f)
+    # print(exp_result_dict)
 
     # for xpath:
     # for inputGradient:
