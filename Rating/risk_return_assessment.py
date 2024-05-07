@@ -13,7 +13,7 @@ import json
 import time
 from tqdm import tqdm
 
-token = '75511519160650be789a0f32b316368fddf2474c0d32f563253d91e9'
+token = '3c00afeeeffc6b731cb5fdc3881e19796524d7f30d25842da85512e4'
 ts.set_token(token)
 pro = ts.pro_api()
 
@@ -232,18 +232,18 @@ class Assessment(object):
         a_r_base = self.get_annualized_return(df_price_base_pred)
 
         # 计算用户的收益偏好得分
-        if record_ar >= self.return_preference:
+        if record_ar > self.return_preference:
             score_p11 = self.score_dic['return'] + math.log(record_ar)
         else:
             score_p11 = 0
 
         # 计算用户风险偏好得分
-        if record_av <= self.risk_preference:
+        if record_av < self.risk_preference:
             score_p12 = self.score_dic['risk'] + math.log(self.risk_preference - record_av + 1)
         else:
             score_p12 = 0
         # 计算用户投资体验感得分
-        if record_md <= self.risk_preference:
+        if record_md <  self.risk_preference:
             score_p13 = self.score_dic['max_drawdown']
         else:
             score_p13 = 0
