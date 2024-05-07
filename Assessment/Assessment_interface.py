@@ -1,12 +1,12 @@
 from Assessment.Credibility_assessment import run_credibility_assessment
-from Assessment.Performance_assessment import run_performance_assessment
+# from Assessment.Performance_assessment import run_performance_assessment
 from Assessment.run_assessment import prepare_data_and_model, test_get_stocks_recommendation
 from Assessment.utils import parse_args, normalize_assessment_results_list
 
 if __name__ == '__main__':
     args = parse_args()
 
-    model_list = ['LSTM', 'GRU', 'MLP', "NRSR", 'relation_GATs']
+    model_list = ['relation_GATs']
     explanation_model = 'xpathExplainer'
     seq_len_list = [30, 60]
 
