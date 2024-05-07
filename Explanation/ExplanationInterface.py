@@ -238,11 +238,11 @@ def run_xpath_explanation(args, event_data, get_fidelity=False, top_k=3):
     explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
     with open(args.relation_name_list_file, 'r', encoding="utf-8") as json_file:
         _relation_name_list = json.load(json_file)
-    res, stock_rank = explanation.explain_x(stock_list=args.check_stock_list, get_fidelity=get_fidelity,
+    res, stock_rank, fidelity = explanation.explain_x(stock_list=args.check_stock_list, get_fidelity=get_fidelity,
                                          top_k=top_k, relation_list=_relation_name_list)
 
     res = check_stocks_with_event(args, res, event_data)
-    return res, stock_rank
+    return res, stock_rank, fidelity
 
 
 def run_gnn_explainer(args, event_data, top_k=3):
@@ -251,10 +251,10 @@ def run_gnn_explainer(args, event_data, top_k=3):
     explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
     with open(args.relation_name_list_file, 'r') as json_file:
         _relation_name_list = json.load(json_file)
-    res, stock_rank = explanation.explain_x(stock_list=args.check_stock_list, top_k=top_k,
+    res, stock_rank, _ = explanation.explain_x(stock_list=args.check_stock_list, top_k=top_k,
                                             relation_list=_relation_name_list)
     res = check_stocks_with_event(args, res, event_data)
-    return res, stock_rank
+    return res, stock_rank, _
 
 
 def run_hencex_explainer(args, event_data, top_k=3):
@@ -263,10 +263,10 @@ def run_hencex_explainer(args, event_data, top_k=3):
     explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
     with open(args.relation_name_list_file, 'r') as json_file:
         _relation_name_list = json.load(json_file)
-    res, stock_rank = explanation.explain_x(stock_list=args.check_stock_list, top_k=top_k,
+    res, stock_rank, _ = explanation.explain_x(stock_list=args.check_stock_list, top_k=top_k,
                                             relation_list=_relation_name_list)
     res = check_stocks_with_event(args, res, event_data)
-    return res, stock_rank
+    return res, stock_rank, _
 
 
 def check_all_relative_stock(args, exp_result_dict, event_data):
@@ -401,7 +401,7 @@ if __name__ == '__main__':
     args = parse_args()
     args.start_date = '2022-01-10'
     args.end_date = '2022-01-11'
-    args.check_stock_list = ['SH600383']
+    # args.check_stock_list = ['SH600383']
     args.model_name =  'NRSR'
     events_files = args.events_files
     # args.date_list = ['2022-06-02']
@@ -417,22 +417,25 @@ if __name__ == '__main__':
 
     # for xpath:
     # for inputGradient:
-    args.explainer = 'xpathExplainer'
-    exp_result_dict, sorted_stock_rank = run_xpath_explanation(args, events_data, get_fidelity=False, top_k=3)
-    print(sorted_stock_rank)
+    # args.explainer = 'xpathExplainer'
+    # exp_result_dict, sorted_stock_rank = run_xpath_explanation(args, events_data, get_fidelity=False, top_k=3)
+    # print(sorted_stock_rank)
 
-    # print(exp_result_dict)
-    # exp_result_dict, fidelity = run_xpath_explanation(args, get_fidelity=True, top_k=3)
-    # print(exp_result_dict, fidelity)
+    # for xpath with fidelity:
+    args.check_stock_list = None
+    args.explainer = 'xpathExplainer'
+    exp_result_dict, sorted_stock_rank, fidelity = \
+        run_xpath_explanation(args, event_data=None, get_fidelity=True, top_k=3)
+    print(exp_result_dict, fidelity)
 
     # for GNNExplainer:
     # args.explainer = 'gnnExplainer'
-    # exp_result_dict, sorted_stock_rank = run_gnn_explainer(args, events_data, top_k=3)
+    # exp_result_dict, sorted_stock_rank, _ = run_gnn_explainer(args, events_data, top_k=3)
     # print(exp_result_dict)
 
     # for EffectExplainer:
     # args.explainer = 'hencexExplainer'
-    # exp_result_dict, sorted_stock_rank = run_hencex_explainer(args, events_data, top_k=3)
+    # exp_result_dict, sorted_stock_rank, _ = run_hencex_explainer(args, events_data, top_k=3)
     # print(exp_result_dict)
 
     # print stock names

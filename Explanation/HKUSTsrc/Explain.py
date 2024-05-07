@@ -134,7 +134,7 @@ class Explanation:
         #  {'2019-01-02': {'SH600000': {'SH600015': {'score':0.22, 'relations': [...]}, 'SH601166': {'score': 0.07, 'relations': [...]}, ...}}}
         data_loader = self.data_loader
         exp_result_dict = {}
-        fidelity_all = []
+        fidelity_all = {}
         stock_rank = {}
         _stock_index = np.load(self.args.stock_index, allow_pickle=True).item()
         index_to_stock_id = {index: stock_id for stock_id, index in _stock_index.items()}
@@ -145,10 +145,11 @@ class Explanation:
             graph = self.graph_data[stock_index][:, stock_index]
             dgl_graph = self.explainer.dense2sparse(graph, feature, self.explainer.device)
             exp_result_dict[str(date)] = {}
+            fidelity_all[str(date)] = []
             # for exception handling
             exception_stocks = []
             if not stock_list:
-                stock_id_list = torch.arange(len(stock_index))
+                stock_id_list = torch.arange(len(stock_index)).numpy().tolist()
             else:
                 stock_codes = index.get_level_values(1).unique().tolist()
                 stock_id_list = []
@@ -172,7 +173,7 @@ class Explanation:
                     explanation, fidelity = \
                         self.explainer.explain(original_preds, dgl_graph, graph,
                                                    stock_id, get_fidelity=get_fidelity, top_k=top_k)
-                    fidelity_all.append(fidelity)
+                    fidelity_all[str(date)].append(fidelity)
                 else:
                     explanation = \
                         self.explainer.explain(original_preds, dgl_graph, graph, stock_id, top_k=top_k)
@@ -235,9 +236,11 @@ class Explanation:
                 for stock in exception_stocks:
                     exp_result_dict[str(date)][stock] = {}
         if get_fidelity:
-            return exp_result_dict, np.mean(fidelity_all)
+            for k, v in fidelity_all.items():
+                fidelity_all[k] = np.mean(v)
+            return exp_result_dict, stock_rank, fidelity_all
 
-        return exp_result_dict, stock_rank
+        return exp_result_dict, stock_rank, None
 
     def save_explanation(self):
         file = r'{}/{}-{}.pkl'.format(self.args.expl_results_dir, self.explainer_name, self.year)
