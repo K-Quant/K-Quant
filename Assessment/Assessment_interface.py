@@ -6,7 +6,8 @@ from Assessment.utils import parse_args, normalize_assessment_results_list
 if __name__ == '__main__':
     args = parse_args()
 
-    model_list = ['relation_GATs']
+    model_list = ['LSTM', 'GRU', 'MLP', 'NRSR', 'relation_GATs']
+    # model_list = ['NRSR']
     explanation_model = 'xpathExplainer'
     seq_len_list = [30, 60]
 

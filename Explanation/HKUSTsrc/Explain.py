@@ -238,7 +238,9 @@ class Explanation:
         if get_fidelity:
             for k, v in fidelity_all.items():
                 fidelity_all[k] = np.mean(v)
-            return exp_result_dict, stock_rank, fidelity_all
+            a = list(fidelity_all.values())
+            mean_fidelity = np.mean(np.array(list(fidelity_all.values())))
+            return exp_result_dict, stock_rank, mean_fidelity
 
         return exp_result_dict, stock_rank, None
 
