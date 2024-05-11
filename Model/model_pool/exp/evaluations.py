@@ -38,7 +38,8 @@ def main(args):
         except:
             print("wrong category key, return all stocks")
             data = data[slc]
-
+    else:
+        data = data[slc]
     report = []
     for name in model_pool_name:
         temp = dict()
@@ -76,8 +77,8 @@ def parse_args():
     parser.add_argument('--device', default='cuda:1')
     parser.add_argument('--incremental_mode', default=False, help='load incremental updated models or not')
     parser.add_argument('--industry_category', default='all')
-    parser.add_argument('--predicted_file', default='pred_output/all_in_one2305.pkl')
-    parser.add_argument('--report_file', default='pred_output/evaluation_all.pkl')
+    parser.add_argument('--predicted_file', default='pred_output/da_preds2305.pkl')
+    parser.add_argument('--report_file', default='pred_output/da_evaluation_all.pkl')
 
     args = parser.parse_args()
     return args
