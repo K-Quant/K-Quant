@@ -81,10 +81,16 @@ For detailed usage of quantitative forecasting model, please refer to
 [Stock prediction module](Model/model_pool/README.md)
 
 ## Benchmark Dataset
+Please refer to our [HiDy Dataset](https://github.com/K-Quant/HiDy).
 
 ### Description
+HiDy is a hierarchical, dynamic, robust, diverse, and large-scale financial benchmark KB that aims to provide various valuable financial knowledge as critical benchmarking data for fair model testing in different financial tasks. Specifically, HiDy currently contains 34 relation types and 17 entity types. The scale of HiDy is steadily growing due to its continuous updates. To make HiDy easily accessible and retrieved, HiDy is organized in a well-formed financial hierarchy with four branches, Macro, Meso, Micro, and Others.
+
 
 ### Data Format
+
+Each instance in the dataset is in the form of quadruple (entity 1, relation , entity 2, timestamp).
+
 
 ## Published Papers
 
