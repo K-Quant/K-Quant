@@ -337,8 +337,8 @@ def sim_linear(data, model_pool, lookback=30, eva_type='ic', select_num=5):
 
 def main(args, device):
     model_pool = args.model_list
-    if args.reference_folder is not None:
-        output = pd.read_pickle(args.reference_folder)
+    if args.reference_file is not None:
+        output = pd.read_pickle(args.reference_file)
         print(output.shape)
     else:
         output = batch_prediction(args, model_pool, device)
@@ -366,7 +366,7 @@ def parse_args():
     parser.add_argument('--incremental_mode', default=False, help='load incremental updated models or not')
     parser.add_argument('--prefix', default='output/')
     parser.add_argument('--incre_prefix', default='output/for_platform/INCRE/')
-    parser.add_argument('--reference_folder', default='pred_output/vanilla_preds2305.pkl')
+    parser.add_argument('--reference_file', default=None)
     parser.add_argument('--saved_file', default='pred_output/all_in_one2305.pkl')
     parser.add_argument('--model_list', default=['RSR', 'KEnhance', 'LSTM', 'GRU', 'GATs', 'MLP', 'ALSTM', 'SFM', 'HIST'])
 

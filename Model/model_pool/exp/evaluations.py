@@ -78,7 +78,7 @@ def parse_args():
     parser.add_argument('--incremental_mode', default=False, help='load incremental updated models or not')
     parser.add_argument('--industry_category', default='all')
     parser.add_argument('--predicted_file', default='pred_output/da_preds2305.pkl')
-    parser.add_argument('--report_file', default='pred_output/da_evaluation_all.pkl')
+    parser.add_argument('--report_file', default='pred_output/da_evaluation.pkl')
 
     args = parser.parse_args()
     return args
