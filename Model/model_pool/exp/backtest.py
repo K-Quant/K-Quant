@@ -229,13 +229,13 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
     # data
-    parser.add_argument('--backtest_start_date', default='2023-01-01')
-    parser.add_argument('--backtest_end_date', default='2023-06-30')
+    parser.add_argument('--backtest_start_date', default='2023-04-01')
+    parser.add_argument('--backtest_end_date', default='2024-05-05')
     parser.add_argument('--device', default='cuda:1')
-    parser.add_argument('--predicted_file', default='pred_output/all_in_one_1.pkl')
-    parser.add_argument('--backtest_file', default='pred_output/backtest.pkl')
+    parser.add_argument('--predicted_file', default='pred_output/all_in_one2305.pkl')
+    parser.add_argument('--backtest_file', default='backtest/backtest2305_top30.pkl')
     parser.add_argument('--qlib_source', default='../../../stock_model/qlib_data/cn_data')
-    parser.add_argument('--topk', default=10)
+    parser.add_argument('--topk', default=30)
     parser.add_argument('--drop', default=0)
     parser.add_argument('--industry_category', default='all')
 

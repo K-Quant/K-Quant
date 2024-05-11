@@ -71,13 +71,13 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
     # data
-    parser.add_argument('--evaluation_start_date', default='2023-01-01')
-    parser.add_argument('--evaluation_end_date', default='2023-06-30')
+    parser.add_argument('--evaluation_start_date', default='2023-04-01')
+    parser.add_argument('--evaluation_end_date', default='2024-05-05')
     parser.add_argument('--device', default='cuda:1')
     parser.add_argument('--incremental_mode', default=False, help='load incremental updated models or not')
     parser.add_argument('--industry_category', default='all')
-    parser.add_argument('--predicted_file', default='pred_output/all_in_one_1.pkl')
-    parser.add_argument('--report_file', default='pred_output/evaluation.pkl')
+    parser.add_argument('--predicted_file', default='pred_output/all_in_one2305.pkl')
+    parser.add_argument('--report_file', default='pred_output/evaluation_all.pkl')
 
     args = parser.parse_args()
     return args

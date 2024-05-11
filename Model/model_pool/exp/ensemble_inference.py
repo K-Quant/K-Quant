@@ -201,7 +201,7 @@ def average_and_blend(args, data, model_pool):
     # for blend, we need to split it to train set and test set, run linear regression to learn weight
     # and test the performance on test set
     btrain_slc = slice(pd.Timestamp(args.test_start_date), pd.Timestamp(args.blend_split_date))
-    btest_slc = slice(pd.Timestamp(args.blend_split_date), pd.Timestamp(args.test_end_date))
+    btest_slc = slice(pd.Timestamp(args.test_start_date), pd.Timestamp(args.test_end_date))
     btrain_data = data[btrain_slc]
     btest_data = data[btest_slc]
     # --------train a linear model to learn the weight of each model--------------------
@@ -233,7 +233,7 @@ def sjtu_ensemble(args, data, model_pool):
     np.random.seed(0)
     model_score = [i+'_score' for i in model_pool]
     btrain_slc = slice(pd.Timestamp(args.test_start_date), pd.Timestamp(args.blend_split_date))
-    btest_slc = slice(pd.Timestamp(args.blend_split_date), pd.Timestamp(args.test_end_date))
+    btest_slc = slice(pd.Timestamp(args.test_start_date), pd.Timestamp(args.test_end_date))
     btrain_data = data[btrain_slc]
     btest_data = data[btest_slc]
     with open('output/ensemble_model/sjtumodel.pkl', 'rb') as f:
@@ -337,10 +337,15 @@ def sim_linear(data, model_pool, lookback=30, eva_type='ic', select_num=5):
 
 def main(args, device):
     model_pool = args.model_list
-    # model_pool = ['RSR_hidy_is', 'KEnhance', 'LSTM', 'GRU', 'GATs', 'MLP', 'ALSTM', 'SFM', 'HIST']
-    output = batch_prediction(args, model_pool, device)
+    if args.reference_folder is not None:
+        output = pd.read_pickle(args.reference_folder)
+        print(output.shape)
+    else:
+        output = batch_prediction(args, model_pool, device)
     output, report = average_and_blend(args, output, model_pool)
+    print(output.shape)
     output, report = sjtu_ensemble(args, output, model_pool)
+    print(output.shape)
     output, report = sim_linear(output, model_pool)
     pd.to_pickle(output, args.saved_file)
     print(output.head())
@@ -354,15 +359,16 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
     # data
-    parser.add_argument('--test_start_date', default='2021-01-01')
-    parser.add_argument('--blend_split_date', default='2021-06-01')
-    parser.add_argument('--test_end_date', default='2023-06-30')
+    parser.add_argument('--test_start_date', default='2023-04-01')
+    parser.add_argument('--blend_split_date', default='2023-12-31')
+    parser.add_argument('--test_end_date', default='2024-05-05')
     parser.add_argument('--device', default='cuda:1')
     parser.add_argument('--incremental_mode', default=False, help='load incremental updated models or not')
     parser.add_argument('--prefix', default='output/')
     parser.add_argument('--incre_prefix', default='output/for_platform/INCRE/')
-    parser.add_argument('--saved_file', default='pred_output/all_in_one.pkl')
-    parser.add_argument('--model_list', default=['RSR_hidy_is', 'KEnhance', 'LSTM', 'GRU', 'GATs', 'MLP', 'ALSTM', 'SFM', 'HIST'])
+    parser.add_argument('--reference_folder', default='pred_output/vanilla_preds2305.pkl')
+    parser.add_argument('--saved_file', default='pred_output/all_in_one2305.pkl')
+    parser.add_argument('--model_list', default=['RSR', 'KEnhance', 'LSTM', 'GRU', 'GATs', 'MLP', 'ALSTM', 'SFM', 'HIST'])
 
     args = parser.parse_args()
     return args
