@@ -2,7 +2,10 @@ import argparse
 import pandas as pd
 import numpy as np
 from backtest import csi300_industry_map, hot_industry
+import warnings
 
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 def metric_fn(preds, score='score'):
     preds = preds[~np.isnan(preds['label'])]

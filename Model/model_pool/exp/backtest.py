@@ -6,7 +6,10 @@ from qlib.backtest import backtest, executor
 from qlib.contrib.evaluate import risk_analysis
 from qlib.contrib.strategy import TopkDropoutStrategy
 import argparse
+import warnings
 
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
 csi300_industry_map = {'农林牧渔': ['SZ002311', 'SZ300498', 'SZ002714'],
                        '基础化工': ['SH601216', 'SH600426', 'SH600989', 'SZ002601', 'SH600352', 'SH600309', 'SZ002064', 'SZ000408', 'SZ000792', 'SH603260'],
                        '钢铁': ['SH600010', 'SH600019', 'SZ000708'],
@@ -47,7 +50,7 @@ def backtest_loop(args, data, model_name, EXECUTOR_CONFIG, backtest_config):
 
     FREQ = "day"
     STRATEGY_CONFIG = {
-    "topk": args.topk,
+    "topk": int(args.topk),
     "n_drop": args.drop,
     "signal": data,
     }
@@ -150,14 +153,14 @@ def parse_args():
     parser.add_argument('--backtest_start_date', default='2023-04-01')
     parser.add_argument('--backtest_end_date', default='2024-04-30')
     parser.add_argument('--device', default='cuda:1')
-    parser.add_argument('--time_scope', default='12_1')
+    parser.add_argument('--time_scope', default='12_0')
     parser.add_argument('--prefix', default='pred_output/platform_data/backtest_data')
     parser.add_argument('--predicted_file', default='pred_output/ensemble_preds_latest.pkl')
     parser.add_argument('--backtest_file', default='pred_output/platform_data/backtest_result_all_12_1.pkl')
     parser.add_argument('--qlib_source', default='../../../stock_model/qlib_data/cn_data')
-    parser.add_argument('--topk', default=30)
+    parser.add_argument('--topk', default=5)
     parser.add_argument('--drop', default=0)
-    parser.add_argument('--industry_category', default='all')
+    parser.add_argument('--industry_category', default='dianzi')
 
     args = parser.parse_args()
     return args
