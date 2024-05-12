@@ -29,7 +29,7 @@ python exp/ensemble_inference.py --reference_file 'pred_output/vanilla_preds_lat
 # step 4 evaluation for each industry in different time scope
 mkdir pred_output/platform_data
 
-for industry in 'all' 'dianzi' # 'yiyaoshengwu' 'yinhang' 'feiyinjinrong' 'dianlishebei' 'jisuanji'
+for industry in 'all' 'dianzi' 'yiyaoshengwu' 'yinhang' 'feiyinjinrong' 'dianlishebei' 'jisuanji'
 do
   # regular training evaluation
   python exp/evaluations.py --evaluation_start_date '2023-04-01' --evaluation_end_date '2024-04-30'\
@@ -57,7 +57,7 @@ done
 
 # step 5 backtest first for every industry top5 strategy in 3 time scope
 
-for industry in 'dianzi' # 'yiyaoshengwu' 'yinhang' 'feiyinjinrong' 'dianlishebei' 'jisuanji'
+for industry in 'dianzi' 'yiyaoshengwu' 'yinhang' 'feiyinjinrong' 'dianlishebei' 'jisuanji'
 do
   python exp/backtest.py --prefix "pred_output/platform_data/backtest_data_$industry-" --backtest_start_date '2023-04-01'\
   --backtest_end_date '2024-04-30' --topk 5 --predicted_file 'pred_output/ensemble_preds_latest.pkl'\
