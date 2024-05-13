@@ -1,5 +1,5 @@
 import os.path
-
+import pickle
 import torch
 import numpy as np
 import pandas as pd
@@ -11,9 +11,10 @@ import sys
 
 # provider_uri = "~/.qlib/qlib_data/cn_data"  # target_dir
 # provider_uri = "../qlib_data/cn_data"  # target_dir
-provider_uri = "/Users/haowang/Desktop/project/stock_model/qlib_data/cn_data"
+provider_uri = r"D:\Research\Fintech\K-Quant\Model\qlib_data\cn_data"
 qlib.init(provider_uri=provider_uri, region=REG_CN)
-from qlib.data.dataset import DatasetH
+from qlib.data.dataset import DatasetH, DataHandlerLP
+
 
 class DataLoader:
 
@@ -354,6 +355,9 @@ def create_loaders(args, device):
     else:
         df_train, df_valid, df_test = dataset.prepare(["train", "valid", "test"],
                                                       col_set=["feature", "label"],data_key=DataHandlerLP.DK_L, )
+
+
+
     # split those three dataset into train, valid and test
     # import pickle5 as pickle
     import pickle
@@ -416,7 +420,7 @@ def create_loaders(args, device):
         test_loader = DataLoader(df_test["feature"], df_test["label"], df_test['market_value'],
                                  df_test['stock_index'],pin_memory=True, start_index=start_index, device=device)
 
-    return train_loader, valid_loader, test_loader
+    return train_loader, valid_loader, test_loader, df_train
 
 
 def create_test_loaders(args, param_dict,device):

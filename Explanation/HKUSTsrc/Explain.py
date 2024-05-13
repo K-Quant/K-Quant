@@ -141,6 +141,8 @@ class Explanation:
 
         for i, slc in tqdm(self.data_loader.iter_daily(), total=self.data_loader.daily_length):
             feature, label, market_value, stock_index, index = data_loader.get(slc)
+            # new_element = torch.tensor([818])
+            # stock_index = torch.cat((stock_index, new_element))
             date = datetime.datetime.date(index[0][0])
             graph = self.graph_data[stock_index][:, stock_index]
             dgl_graph = self.explainer.dense2sparse(graph, feature, self.explainer.device)
@@ -238,7 +240,6 @@ class Explanation:
         if get_fidelity:
             for k, v in fidelity_all.items():
                 fidelity_all[k] = np.mean(v)
-            a = list(fidelity_all.values())
             mean_fidelity = np.mean(np.array(list(fidelity_all.values())))
             return exp_result_dict, stock_rank, mean_fidelity
 

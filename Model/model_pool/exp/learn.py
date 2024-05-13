@@ -565,4 +565,9 @@ if __name__ == '__main__':
     """
     args = parse_args()
     device = args.device if torch.cuda.is_available() else 'cpu'
-    main(args)
+    train_loader, valid_loader, test_loader = create_loaders(args, device=device)
+    # main(args)
+
+
+
+
