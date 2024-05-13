@@ -91,6 +91,8 @@ class HencexExplainer():
             with torch.no_grad():
                 g_c_adj = self.sparse2dense(self.rel_matrix, g_c)
                 out = self.model(X_perturb, g_c_adj)
+                if out.shape == ():
+                    out = [out]
             pred_score = out[new_target_id].item()
             sampled_y_cap.append(pred_score)
         self.ori_sampled_y_cap = np.expand_dims(sampled_y_cap, axis=0).T

@@ -70,8 +70,10 @@ class GNNExplainer:
         for epoch in range(self.epochs):
             self.model.eval()
             optimizer.zero_grad()
-            pred = self.model(g_c.ndata['nfeat'].to(self.device), self.edge_mask.sigmoid())[new_target_id]
-            loss = self.loss(pred, original_pred)
+            pred = self.model(g_c.ndata['nfeat'].to(self.device), self.edge_mask.sigmoid())
+            if pred.shape == ():
+                pred = [pred]
+            loss = self.loss(pred[new_target_id], original_pred)
             loss.backward()
             optimizer.step()
             self.edge_mask.data[g_c_adj == 0] = self.MIN
