@@ -3,12 +3,10 @@
 
 ## Introduction
 
-This repo is a part of K-Quant project, stock forecasting module.
-
 This module have 3 basic functions:
-### Module 2.1 knowledge based stock recommendation models
-### Module 2.2 stock recommendation ensemble models
-### Module 2.3 incremental learning methods for stock models
+#### Module 2.1 Knowledge based stock recommendation models
+#### Module 2.2 Stock recommendation ensemble models
+#### Module 2.3 Incremental learning methods for stock models
 
 ## Environment
 1. Install python3.8(recommend) 
@@ -65,9 +63,9 @@ The result will be stored in output folder, if you need some well-trained models
 
 
 #### 2.1.3 To save the prediction result:
-modify the ```prefix``` and ```model_pool``` in ```exp/ensemble_basic.py```.
+modify the ```prefix``` and ```model_pool``` in ```exp/ensemble_inference.py```.
 
-Then run ```batch_prediction``` in ```exp/ensemble_basic.py```.
+Then run ```batch_prediction``` in ```exp/ensemble_inference.py```.
 
 You can get multi models prediction results in one pickle file.
 
@@ -76,7 +74,7 @@ You can get multi models prediction results in one pickle file.
 We employ backtrader and Qlib module to achieve a simple backtest function. To run the backtest to evaluate the model performances on investment, 
 run ```backtest.py``` to get the report or figure of cumulated excess return.
 
-The backtest need the prediction pickle file from ```exp/ensemble_basic.py```, other backtest modules are compatible.
+The backtest need the prediction pickle file from ```exp/ensemble_inference.py```, other backtest modules are compatible.
 
 #### 2.1.5 Attention:
 For knowledge empowered model, we only support use THE SAME file while you train the model, since some models take the number of relations as a parameter while model initializing. 
@@ -96,11 +94,11 @@ performance based ensemble
 Rensemble no retrain
 Rensemble with retrain
 ```
-To get the result of the average and linear blend ensemble: run ```average_and_blend``` in ```exp/ensemble_basic.py```
+To get the result of the average and linear blend ensemble: run ```average_and_blend``` in ```exp/ensemble_inference.py```
 
-To get the result of the dynamic linear blend ensemble: run ```sim_linear``` in ```exp/ensemble_basic.py```
+To get the result of the dynamic linear blend ensemble: run ```sim_linear``` in ```exp/ensemble_inference.py```
 
-To get the result of performance based ensemble, rensemble with/without retrain: run  ```ensemble_sjtu``` in ```exp/ensemble_basic.py```
+To get the result of performance based ensemble, rensemble with/without retrain: run  ```ensemble_sjtu``` in ```exp/ensemble_inference.py```
 
 The ensemble result will be stored in the pickle file like module 2.1.
 

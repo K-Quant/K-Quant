@@ -6,7 +6,10 @@ from qlib.backtest import backtest, executor
 from qlib.contrib.evaluate import risk_analysis
 from qlib.contrib.strategy import TopkDropoutStrategy
 import argparse
+import warnings
 
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
 csi300_industry_map = {'农林牧渔': ['SZ002311', 'SZ300498', 'SZ002714'],
                        '基础化工': ['SH601216', 'SH600426', 'SH600989', 'SZ002601', 'SH600352', 'SH600309', 'SZ002064', 'SZ000408', 'SZ000792', 'SH603260'],
                        '钢铁': ['SH600010', 'SH600019', 'SZ000708'],
@@ -41,23 +44,14 @@ hot_industry = {'dianzi': '电子', 'yiyaoshengwu': '医药生物', 'yinhang': '
                        'dianlishebei': '电力设备', 'jisuanji': '计算机'}
 
 
-def backtest_loop(data, model_name, EXECUTOR_CONFIG, backtest_config, top_k, n_drop):
+def backtest_loop(args, data, model_name, EXECUTOR_CONFIG, backtest_config):
     data = data[[model_name]]
     data.columns = [['score']]
-    # init qlib
-    # Benchmark is for calculating the excess return of your strategy.
-    # Its data format will be like **ONE normal instrument**.
-    # For example, you can query its data with the code below
-    # `D.features(["SH000300"], ["$close"], start_time='2010-01-01', end_time='2017-12-31', freq='day')`
-    # It is different from the argument `market`, which indicates a universe of stocks (e.g. **A SET** of stocks like csi300)
-    # For example, you can query all data from a stock market with the code below.
-    # ` D.features(D.instruments(market='csi300'), ["$close"], start_time='2010-01-01', end_time='2017-12-31', freq='day')`
 
     FREQ = "day"
     STRATEGY_CONFIG = {
-    "topk": top_k,
-    "n_drop": n_drop,
-    # pred_score, pd.Series
+    "topk": int(args.topk),
+    "n_drop": args.drop,
     "signal": data,
     }
     # strategy object
@@ -69,67 +63,25 @@ def backtest_loop(data, model_name, EXECUTOR_CONFIG, backtest_config, top_k, n_d
     analysis_freq = "{0}{1}".format(*Freq.parse(FREQ))
     # backtest info
     report_normal, positions_normal = portfolio_metric_dict.get(analysis_freq)
-
     # analysis
     analysis = dict()
     analysis["excess_return_without_cost"] = risk_analysis(
     report_normal["return"] - report_normal["bench"], freq=analysis_freq
     )
+
     analysis["excess_return_with_cost"] = risk_analysis(
     report_normal["return"] - report_normal["bench"] - report_normal["cost"], freq=analysis_freq
     )
 
-    analysis_df = pd.concat(analysis)  # type: pd.DataFrame
-    # log metrics
-    analysis_dict = flatten_dict(analysis_df["risk"].unstack().T.to_dict())
-    # print out results
+    # analysis_df = pd.concat(analysis)
+    # analysis_dict = flatten_dict(analysis_df["risk"].unstack().T.to_dict())
     benchmark_p = risk_analysis(report_normal["bench"], freq=analysis_freq)
     excess_return_wo_cost = analysis["excess_return_without_cost"]
     excess_return_w_cost = analysis["excess_return_with_cost"]
-    return benchmark_p, excess_return_wo_cost, excess_return_w_cost
-
-
-def backtest_fig(data, model_name, EXECUTOR_CONFIG, backtest_config,time):
-    """
-    this one is used to draw figure, but now we move it to front end
-    """
-    data = data[[model_name]]
-    data.columns = [['score']]
-    # init qlib
-    # Benchmark is for calculating the excess return of your strategy.
-    # Its data format will be like **ONE normal instrument**.
-    # For example, you can query its data with the code below
-    # `D.features(["SH000300"], ["$close"], start_time='2010-01-01', end_time='2017-12-31', freq='day')`
-    # It is different from the argument `market`, which indicates a universe of stocks (e.g. **A SET** of stocks like csi300)
-    # For example, you can query all data from a stock market with the code below.
-    # ` D.features(D.instruments(market='csi300'), ["$close"], start_time='2010-01-01', end_time='2017-12-31', freq='day')`
-
-    FREQ = "day"
-    STRATEGY_CONFIG = {
-    "topk": 100,
-    "n_drop": 0,
-    # pred_score, pd.Series
-    "signal": data,
-    }
-    # strategy object
-    strategy_obj = TopkDropoutStrategy(**STRATEGY_CONFIG)
-    # executor object
-    executor_obj = executor.SimulatorExecutor(**EXECUTOR_CONFIG)
-    # backtest
-    portfolio_metric_dict, indicator_dict = backtest(executor=executor_obj, strategy=strategy_obj, **backtest_config)
-    analysis_freq = "{0}{1}".format(*Freq.parse(FREQ))
-    # backtest info
-    report_normal, positions_normal = portfolio_metric_dict.get(analysis_freq)
 
     draw_df = report_normal[['return', 'bench']]
-    # draw_df.columns = [['Model cumulative return ', 'CSI300 benchmark cumulative return']]
-    # target = draw_df.cumsum().plot(figsize=(16, 10))
-    # plt.legend(['Model cumulative return', 'CSI300 benchmark cumulative return'], title='Model performance')
-    # target.grid()
-    # target = target.get_figure()
-    # target.savefig('pred_output/plot_'+model_name+'_'+time+'.png')
-    # analysis
-    return None
+    draw_df.cumsum().to_csv(args.prefix + f"_" + model_name + "_" + args.time_scope + ".csv")
+    return benchmark_p, excess_return_wo_cost, excess_return_w_cost
 
 
 def back_test_main(args):
@@ -145,6 +97,9 @@ def back_test_main(args):
         except:
             print("wrong category key, return all stocks")
             data = data[slc]
+
+    else:
+        data = data[slc]
 
     CSI300_BENCH = "SH000300"
     EXECUTOR_CONFIG = {
@@ -163,7 +118,6 @@ def back_test_main(args):
             "deal_price": "close",
             "open_cost": 0.00005,
             "close_cost": 0.00015,
-            # 'close_cost': 0.0003,
             "min_cost": 5,
         }, }
     model_pool_name = data.columns.tolist()
@@ -171,8 +125,7 @@ def back_test_main(args):
     pd_pool = []
     for model in model_pool:
         symbol = model
-        benchmark, er_wo_cost, er_w_cost = backtest_loop(data, symbol, EXECUTOR_CONFIG,
-                                                         backtest_config, args.topk, args.drop)
+        benchmark, er_wo_cost, er_w_cost = backtest_loop(args, data, symbol, EXECUTOR_CONFIG, backtest_config)
         er_w_cost.columns = [[model + '_with_cost']]
         # er_wo_cost.columns = [[model + '_without_cost']]
         benchmark.columns = [['benchmarks']]
@@ -189,38 +142,6 @@ def back_test_main(args):
     return None
 
 
-def draw_main():
-    data = pd.read_pickle('pred_output/all_in_one.pkl')
-    qlib.init(provider_uri="../qlib_data/cn_data")
-    data = data.dropna()
-    CSI300_BENCH = "SH000300"
-    EXECUTOR_CONFIG = {
-        "time_per_step": "day",
-        "generate_portfolio_metrics": True,
-    }
-    FREQ = 'day'
-    backtest_config = {
-        "start_time": "2022-06-01",
-        "end_time": "2023-06-30",
-        "account": 100000000,
-        "benchmark": CSI300_BENCH,  # "benchmark": NASDAQ_BENCH,
-        "exchange_kwargs": {
-            "freq": FREQ,
-            "limit_threshold": 0.095,
-            "deal_price": "close",
-            "open_cost": 0.00005,
-            "close_cost": 0.00015,
-            "min_cost": 5,
-        }, }
-    model_pool = ['GRU', 'LSTM', 'GATs', 'MLP', 'ALSTM', 'HIST', 'ensemble_retrain', 'RSR_hidy_is', 'KEnhance', 'SFM',
-                  'ensemble_no_retrain', 'Perfomance_based_ensemble', 'average', 'blend', 'dynamic_ensemble']
-    # model_pool = ['GRU', 'LSTM', 'GATs', 'MLP', 'ALSTM', 'SFM']
-    for model in model_pool:
-        symbol = model + '_score'
-        report_normal = backtest_fig(data, symbol, EXECUTOR_CONFIG, backtest_config, time='12_3')
-        print('fig saved')
-
-
 def parse_args():
     """
     deliver arguments from json file to program
@@ -229,16 +150,17 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
     # data
-    parser.add_argument('--backtest_start_date', default='2023-01-01')
-    parser.add_argument('--backtest_end_date', default='2023-06-30')
+    parser.add_argument('--backtest_start_date', default='2023-04-01')
+    parser.add_argument('--backtest_end_date', default='2024-04-30')
     parser.add_argument('--device', default='cuda:1')
-    parser.add_argument('--predicted_file', default='pred_output/all_in_one_1.pkl')
-    parser.add_argument('--backtest_file', default='pred_output/backtest.pkl')
+    parser.add_argument('--time_scope', default='12_0')
+    parser.add_argument('--prefix', default='pred_output/platform_data/backtest_data')
+    parser.add_argument('--predicted_file', default='pred_output/ensemble_preds_latest.pkl')
+    parser.add_argument('--backtest_file', default='pred_output/platform_data/backtest_result_all_12_1.pkl')
     parser.add_argument('--qlib_source', default='../../../stock_model/qlib_data/cn_data')
-    parser.add_argument('--topk', default=10)
+    parser.add_argument('--topk', default=5)
     parser.add_argument('--drop', default=0)
-    parser.add_argument('--industry_category', default='all')
-
+    parser.add_argument('--industry_category', default='dianzi')
 
     args = parser.parse_args()
     return args
@@ -247,4 +169,3 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     back_test_main(args)
-    # draw_main()

@@ -2,7 +2,10 @@ import argparse
 import pandas as pd
 import numpy as np
 from backtest import csi300_industry_map, hot_industry
+import warnings
 
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 def metric_fn(preds, score='score'):
     preds = preds[~np.isnan(preds['label'])]
@@ -38,7 +41,8 @@ def main(args):
         except:
             print("wrong category key, return all stocks")
             data = data[slc]
-
+    else:
+        data = data[slc]
     report = []
     for name in model_pool_name:
         temp = dict()
@@ -71,13 +75,13 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
     # data
-    parser.add_argument('--evaluation_start_date', default='2023-01-01')
-    parser.add_argument('--evaluation_end_date', default='2023-06-30')
+    parser.add_argument('--evaluation_start_date', default='2023-04-01')
+    parser.add_argument('--evaluation_end_date', default='2024-05-05')
     parser.add_argument('--device', default='cuda:1')
     parser.add_argument('--incremental_mode', default=False, help='load incremental updated models or not')
     parser.add_argument('--industry_category', default='all')
-    parser.add_argument('--predicted_file', default='pred_output/all_in_one_1.pkl')
-    parser.add_argument('--report_file', default='pred_output/evaluation.pkl')
+    parser.add_argument('--predicted_file', default='pred_output/da_preds2305.pkl')
+    parser.add_argument('--report_file', default='pred_output/da_evaluation.pkl')
 
     args = parser.parse_args()
     return args
