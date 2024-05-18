@@ -21,7 +21,7 @@ class GNNExplainer:
         # convert adj matrix to dgl sparse graph
         if len(rel_matrix.shape) == 3:
             rel_matrix = rel_matrix.sum(axis=-1)  # [N, N]
-        unit_matrix_2d = torch.eye(300)
+        unit_matrix_2d = torch.eye(rel_matrix.shape[0])
         rel_matrix = rel_matrix + unit_matrix_2d
         idx = rel_matrix.nonzero(as_tuple=True)
         dgl_graph = dgl.graph((idx[0], idx[1])).to(device)

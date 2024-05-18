@@ -429,9 +429,9 @@ if __name__ == '__main__':
     # print(exp_result_dict, fidelity)
 
     # for GNNExplainer:
-    # args.explainer = 'gnnExplainer'
-    # exp_result_dict, sorted_stock_rank, _ = run_gnn_explainer(args, events_data, top_k=3)
-    # print(exp_result_dict)
+    args.explainer = 'gnnExplainer'
+    exp_result_dict, sorted_stock_rank, _ = run_gnn_explainer(args, events_data, top_k=3)
+    print(exp_result_dict)
 
     # for EffectExplainer:
     # args.explainer = 'hencexExplainer'
