@@ -399,8 +399,8 @@ if __name__ == '__main__':
     # processed_n_data = pool.map(tensorize_with_label, zip(smiles, labels))
 
     args = parse_args()
-    args.start_date = '2024-01-10'
-    args.end_date = '2024-01-11'
+    args.start_date = '2024-04-10'
+    args.end_date = '2024-04-11'
     args.check_stock_list = None
     args.model_name =  'NRSR'
     events_files = args.events_files
