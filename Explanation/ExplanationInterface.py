@@ -261,7 +261,7 @@ def run_hencex_explainer(args, event_data, top_k=3):
     param_args = load_params(args)
     data_loader = create_data_loaders(args)
     explanation = Explanation(param_args, data_loader, explainer_name=args.explainer)
-    with open(args.relation_name_list_file, 'r') as json_file:
+    with open(args.relation_name_list_file, 'r', encoding="utf-8") as json_file:
         _relation_name_list = json.load(json_file)
     res, stock_rank, _ = explanation.explain_x(stock_list=args.check_stock_list, top_k=top_k,
                                             relation_list=_relation_name_list)
@@ -408,12 +408,12 @@ if __name__ == '__main__':
     with open(events_files, 'r', encoding='utf-8') as f:
         events_data = json.load(f)
 
-    # args.explainer = 'inputGradientExplainer'
-    # exp_result_dict, sorted_stock_rank, explanation = run_input_gradient_explanation(args, events_data)
-    # fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
-    # with open(r"D:\Research\Fintech\K-Quant\test.json", 'w', encoding='utf-8') as f:
-    #     json.dump(exp_result_dict, f)
-    # print(exp_result_dict)
+    args.explainer = 'inputGradientExplainer'
+    exp_result_dict, sorted_stock_rank, explanation = run_input_gradient_explanation(args, events_data)
+    fidelity = evaluate_fidelity(explanation, exp_result_dict, 0.2)
+    with open(r"D:\Research\Fintech\K-Quant\test.json", 'w', encoding='utf-8') as f:
+        json.dump(exp_result_dict, f)
+    print(exp_result_dict)
 
     # for xpath:
     # for inputGradient:
@@ -434,9 +434,9 @@ if __name__ == '__main__':
     print(exp_result_dict)
 
     # for EffectExplainer:
-    # args.explainer = 'hencexExplainer'
-    # exp_result_dict, sorted_stock_rank, _ = run_hencex_explainer(args, events_data, top_k=3)
-    # print(exp_result_dict)
+    args.explainer = 'hencexExplainer'
+    exp_result_dict, sorted_stock_rank, _ = run_hencex_explainer(args, events_data, top_k=3)
+    print(exp_result_dict)
 
     # print stock names
     # import pickle
