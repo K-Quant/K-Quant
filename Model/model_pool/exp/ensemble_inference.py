@@ -244,8 +244,7 @@ def sjtu_ensemble(args, data, model_pool):
     y_t = btest_data[['label']].values
     ensemble_model.train(X, y)
     y_pred_no_retrain = ensemble_model(X_t)
-    y_pred_retrain = ensemble_model.predict(X, y, X_t, y_t,
-                                            retrain_interval=300, max_retrain_samples=-1, progress_bar=True)
+    y_pred_retrain = ensemble_model.predict(X, y, X_t, y_t)
     btest_data['ensemble_retrain_score'] = y_pred_retrain
     btest_data['ensemble_no_retrain_score'] = y_pred_no_retrain
     pbm = PerfomanceBasedModel()

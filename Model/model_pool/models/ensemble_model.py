@@ -90,6 +90,7 @@ class ReweightModel(Ensemble_model):
         sig = self.normParam(y_train-x_train, weight)
         w = torch.sum(torch.linalg.pinv(sig), dim=0, keepdim=True)
         if torch.any(w < 0): w += w.min()
+        w = torch.exp(w)
         self.w = (w / w.sum()).detach().numpy()
         
         
