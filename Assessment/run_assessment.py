@@ -8,8 +8,8 @@ from tqdm import tqdm
 
 from Assessment.dataloader import create_data_loaders
 from Model.model_pool.utils.utils import DotDict
-from utils import get_model, add_noise, transform_stock_code
-from metrics import cal_assessment
+from Assessment.utils import get_model, add_noise, transform_stock_code
+from Assessment.metrics import cal_assessment
 
 time_series_library = [
     'DLinear',

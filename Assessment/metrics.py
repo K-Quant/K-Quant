@@ -9,7 +9,7 @@ from Explanation.SJsrc import *
 
 
 def cal_assessment(param_dict, data_loader, model, explanation_model, device):
-    from run_assessment import predict
+    from Assessment.run_assessment import predict
 
     preds = predict(param_dict, data_loader, model, device)
 
@@ -59,7 +59,7 @@ def cal_stability(preds):
 
 
 def cal_robustness(preds, param_dict, data_loader, model, device, r=2):
-    from run_assessment import predict
+    from Assessment.run_assessment import predict
 
     r_scores = []
     for i in range(r):

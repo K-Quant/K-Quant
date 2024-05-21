@@ -3,7 +3,7 @@ import json
 import os
 
 from Assessment.metrics import cal_assessment
-from run_assessment import main
+
 
 
 def run_credibility_assessment(param_dict, data_loader, model, explanation_model):
