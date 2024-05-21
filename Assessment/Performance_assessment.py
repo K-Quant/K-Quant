@@ -1,9 +1,9 @@
 from Rating.risk_return_assessment import *
 
-Astock_file = r"../Data/Assessement_data/em_hs_basic_info.json"
+Astock_file = r"./Data/Assessement_data/em_hs_basic_info.json"
 # input10 & input11
-hs300_file = r"../Data/Assessement_data/沪深300指数.json"
-csi500_file = r"../Data/Assessement_data/中证500指数.json"
+hs300_file = r"./Data/Assessement_data/沪深300指数.json"
+csi500_file = r"./Data/Assessement_data/中证500指数.json"
 score_dic = {'return': 5, 'risk': 5, 'max_drawdown': 5, 'Comparison1': [6, 6, 3], 'Comparison2': 70}
 
 

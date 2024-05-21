@@ -11,8 +11,8 @@ if __name__ == '__main__':
     # explanation_model = "inputGradientExplainer"
     # seq_len_list = [30, 60]
     #
-    # args.start_date = '2022-06-01'
-    # args.end_date = '2022-06-02'
+    args.start_date = '2024-03-01'
+    args.end_date = '2024-03-10'
     #
     # args.seq_len = 60
     # c_a_r_list = []
@@ -50,25 +50,41 @@ if __name__ == '__main__':
 
     select_dict_list = [
         {
-            '002460.SZ': 3,
+            '600061.SH': 0.1,
+            '601009.SH': 0.2,
+            '601066.SH': 0.1,
+            '600519.SH': 0.3,
+            '600606.SH': 0.3
+        },
+        {
+            '600061.SH': 0.2,
+            '601009.SH': 0.2,
+            '600887.SH': 0.4,
+            '600132.SH': 0.2,
+        },
+        {
+            '600010.SH': 0.8,
+            '600132.SH': 0.1,
+            '600489.SH': 0.1
 
         },
         {
-            '600009.SH': 1,
+            '600760.SH': 0.3,
+            '600000.SH': 0.2,
+            '600600.SH': 0.2,
+            '601088.SH': 0.3
 
         },
         {
-            '600000.SH': 100,
+            '600837.SH': 0.7,
+            '601009.SH': 0.2,
+            '601066.SH': 0.1,
 
         },
         {
-            '600015.SH': 1,
-        },
-        {
-            '600703.SH': 1,
-        },
-        {
-            '300072.SZ': 1
+            '601009.SH': 0.1,
+            '601066.SH': 0.5,
+            '600132.SH': 0.4
         },
     ]
 
@@ -76,8 +92,8 @@ if __name__ == '__main__':
     #更新时间表述
     args.start_date = args.start_date.replace('-', '')
     args.end_date = args.end_date.replace('-', '')
-    args.return_preference = 0 # 输入回报偏好
-    args.risk_preference = 90 # 输入风险偏好
+    args.return_preference = 2 # 输入回报偏好
+    args.risk_preference = 60 # 输入风险偏好
     p_a_r_list = []
     for select_dict in select_dict_list:
         h_p_dict = {

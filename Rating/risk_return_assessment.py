@@ -232,18 +232,18 @@ class Assessment(object):
         a_r_base = self.get_annualized_return(df_price_base_pred)
 
         # 计算用户的收益偏好得分
-        if record_ar > self.return_preference:
+        if record_ar >= self.return_preference:
             score_p11 = self.score_dic['return'] + math.log(record_ar)
         else:
             score_p11 = 0
 
         # 计算用户风险偏好得分
-        if record_av < self.risk_preference:
+        if record_av <= self.risk_preference:
             score_p12 = self.score_dic['risk'] + math.log(self.risk_preference - record_av + 1)
         else:
             score_p12 = 0
         # 计算用户投资体验感得分
-        if record_md <  self.risk_preference:
+        if record_md <=  self.risk_preference:
             score_p13 = self.score_dic['max_drawdown']
         else:
             score_p13 = 0
