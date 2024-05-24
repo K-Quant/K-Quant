@@ -11,19 +11,20 @@ In recent years, domain-specific knowledge bases (KBs) have attracted more atten
 
 K-Quant system have three main components: Knowledge Module, Quantitative Investment Module, XAI Module.
 
-If you find this system helpful in your research, please consider citing our papers that are listed below:
-
-[1] **T-FinKB: A Platform of Temporal Financial Knowledge Base Construction.**
-*Xinyi Zhu, Liping Wang, Hao Xin, Xiaohan Wang, Zhifeng Jia, Jiyao Wang, Chunming Ma, Yuxiang Zeng.* ICDE 2023. \[[paper](https://ieeexplore.ieee.org/document/10184672)\]
-
-[2] **Methods for Acquiring and Incorporating Knowledge into Stock Price Prediction: A Survey.**
-*Liping Wang, Jiawei Li, Lifan Zhao, Zhizhuo Kou, Xiaohan Wang, Xinyi Zhu, Hao Wang, Yanyan Shen, Lei Chen.* Arxiv 2023. \[[paper](https://arxiv.org/abs/2308.04947)\]
-
 ## Main Features
 ![overview](logo/demo_overview.png)
 The main features of K-Quant:
 
 #### 1. Dynamic Financial KB Construction
+
+The dynamic financial KB construction module consists of three main steps:
+
+1. Evolved Knowledge Extraction Module: it extracts financial knowledge with evolved information from several reliable data sources.
+
+2. Temporal Record Linkage and Conflict Resolution Module: it removes duplicated and conflicted knowledge based on temporal information to increase the confidence of the delivered knowledge.
+
+3. Dynamic Knowledge Update Module: it proposes a temporal pattern-based inference rule learning module to maintain our constructed KB consistent with the dynamically changing world.
+
 #### 2. Quantitative Investment Framework
 To handle temporal relations between companies and utilize the knowledge in quantitative investment, the K-Quant have three main functions in Quantitative Investment Framework:
   1. Knowledge based stock recommendation models
@@ -94,6 +95,16 @@ Each instance in the dataset is in the form of quadruple (entity 1, relation , e
 
 ## Published Papers
 
+If you find this system helpful in your research, please consider citing our papers that are listed below:
+
+> Cost-aware Outdated Facts Correction in the Knowledge Bases. Hao Xin, Yanyan Shen, Lei Chen. DASFAA 2024. [Paper Coming Soon]
+
+> PKBC: A Product-Specific Knowledge base Taxonomy Framework. Hao Xin, Yanyan Shen, Lei Chen. DASFAA 2024. [Paper Coming Soon]
+
+> Triple-d: Denoising Distant Supervision for High-quality Data Creation. Xinyi Zhu, Yongqi Zhang, Lei Chen, Kai Chen. ICDE 2024. [Paper Coming Soon]
+
+> T-FinKB: A Platform of Temporal Financial Knowledge Base Construction. Xinyi Zhu, Liping Wang, Hao Xin, Xiaohan Wang, Zhifeng Jia, Jiyao Wang, Chunming Ma, Yuxiang Zeng. ICDE 2023. [Paper Coming Soon]
+
 > Liping Wang, Yanyan Shen, and Lei Chen. 2023. TE-DyGE: Temporal Evolution-Enhanced Dynamic Graph Embedding Network. In Database Systems for Advanced Applications: 28th International Conference, DASFAA 2023, Tianjin, China, April 17–20, 2023, Proceedings, Part III. Springer-Verlag, Berlin, Heidelberg, 183–198. https://doi.org/10.1007/978-3-031-30675-4_13
 
 > Xinyi Zhu, Hao Xin, Yanyan Shen, and Lei Chen. 
@@ -102,6 +113,4 @@ HIT - An Effective Approach to Build a Dynamic Financial Knowledge Base. In Data
 > Liping Wang, Jiawei Li, Lifan Zhao, Zhizhuo Kou, Xiaohan Wang, Xinyi Zhu, Hao Wang, Yanyan Shen, Lei Chen.
 Methods for Acquiring and Incorporating Knowledge into Stock Price Prediction: A Survey. https://arxiv.org/abs/2308.04947
 
-## Related Works
 
-## Acknowledgement
