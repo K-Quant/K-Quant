@@ -3,6 +3,7 @@
 import random
 import warnings
 
+import qlib
 from qlib.data.dataset import DataHandlerLP
 
 warnings.filterwarnings("ignore")
@@ -20,7 +21,6 @@ DIRNAME = Path(__file__).absolute().resolve().parent
 sys.path.insert(0, str(DIRNAME.parent))
 sys.path.insert(0, str(DIRNAME.parent.parent))
 from model_pool.models.model import MLP, GRU, LSTM, GAT, ALSTM, SFM, RSR, HIST, KEnhance
-from model_pool.utils.dataloader import create_doubleadapt_loaders
 from pprint import pprint
 from typing import Optional, Dict, Union, List
 import argparse
@@ -158,6 +158,7 @@ class IncrementalExp:
         """
         self.data_dir = data_dir
         self.provider_uri = os.path.join(args.root_path, data_dir)
+        # qlib.init(provider_uri=self.provider_uri, region='cn')
 
         if calendar_path is None:
             calendar_path = os.path.join(args.root_path, data_dir, 'calendars/day.txt')
@@ -262,7 +263,7 @@ class IncrementalExp:
             model = get_model(param_dict['model_name'])(d_feat=param_dict['d_feat'],
                                                         num_layers=param_dict['num_layers'])
 
-        if param_dict['model_name'] == 'GAT':
+        if isinstance(model, GAT):
             self.day_by_day = True
 
         model.to(args.device)
@@ -321,61 +322,6 @@ class IncrementalExp:
                           meta_tasks_val=rolling_tasks_data['valid'],
                           checkpoint_path=args.reload_path)
         return framework
-
-    def inference(self, args, model, meta_tasks_test: List[Dict[str, Union[pd.DataFrame, np.ndarray, torch.Tensor]]],
-                  date_slice: slice = slice(None, None), stock2concept_matrix=None, stock2stock_matrix=None):
-        param_dict = json.load(open(args.model_path + '/info.json'))['config']
-        param_dict['model_dir'] = args.model_path
-        stock2concept_matrix = param_dict['stock2concept_matrix']
-        stock2stock_matrix = param_dict['stock2stock_matrix']
-        model.eval()
-
-        pred_y_all, mse_all = [], 0
-        indices = np.arange(len(meta_tasks_test))
-        for i in tqdm(indices, desc="online") if True else indices:
-            meta_input = meta_tasks_test[i]
-            if not isinstance(meta_input['X_train'], torch.Tensor):
-                meta_input = {
-                    k: torch.tensor(v, device=args.device, dtype=torch.float32) if 'idx' not in k else v
-                    for k, v in meta_input.items()
-                }
-
-            """ Online inference """
-            if "X_extra" in meta_input and meta_input["X_extra"].shape[0] > 0:
-                X_test = torch.cat([meta_input["X_extra"].to(args.device), meta_input["X_test"].to(args.device), ], 0, )
-                y_test = torch.cat([meta_input["y_extra"].to(args.device), meta_input["y_test"].to(args.device), ], 0, )
-            else:
-                X_test = meta_input["X_test"].to(args.device)
-                y_test = meta_input["y_test"].to(args.device)
-            if X_test.dim() == 3:
-                X_test = X_test.permute(0, 2, 1).reshape(len(X_test), -1) if True else X_test.reshape(len(X_test), -1)
-
-            stock_index = None  # need to be revise
-            market_value = None
-            with torch.no_grad():
-                if args.model_name == 'HIST':
-                    pred = model(X_test, stock2concept_matrix[stock_index], market_value)
-                # elif args.model_name in relation_model_dict:
-                #     pred = model(X_test, stock2stock_matrix[stock_index][:, stock_index])
-                else:
-                    pred = model(X_test)
-                    pred = pred.view(-1)
-
-            test_begin = len(meta_input["y_extra"]) if "y_extra" in meta_input else 0
-            output = pred[test_begin:].detach().cpu().numpy()
-
-            test_idx = meta_input["test_idx"]
-            pred_y_all.append(
-                pd.DataFrame(
-                    {
-                        "pred": pd.Series(output, index=test_idx),
-                        "label": pd.Series(meta_input["y_test"], index=test_idx),
-                    }
-                )
-            )
-        pred_y_all = pd.concat(pred_y_all)
-        pred_y_all = pred_y_all.loc[date_slice]
-        return pred_y_all
 
     def online_training(self, args, segments: Dict[str, tuple] = None,
                         data: pd.DataFrame = None, reload_path: str = None, framework=None, ):
@@ -489,33 +435,34 @@ class IncrementalExp:
                 os.makedirs(args.model_save_path)
             # save_path = os.path.join(args.model_save_path, f"{self.experiment_name}.pt")
 
+        from model_pool.utils.dataloader import create_doubleadapt_loaders
         ds = create_doubleadapt_loaders(args, self.rank_label)
         data = ds.prepare(['train'], col_set=["feature", "label"], data_key=DataHandlerLP.DK_L, )[0]
 
         print(self.segments)
-        assert data.index[0][0] <= self.ta.align_time(self.segments['train'][0], tp_type='start')
-        assert data.index[-1][0] >= self.ta.align_time(self.segments['test'][-1], tp_type='end')
+        assert data.index[0][0] <= self.ta.align_time(self.segments['train'][0], tp_type='start'), print(data.index[0][0])
+        assert data.index[-1][0] >= self.ta.align_time(self.segments['test'][-1], tp_type='end'), print(data.index[-1][0])
         print("offline_training")
         framework = self.offline_training(args=args, data=data, reload_path=reload_path)
 
         print("evaluation")
 
-        # data = ds.prepare(['train'], col_set=["feature", "label"], data_key=DataHandlerLP.DK_L, )[0]
-        pred_y_all_incre = self.online_training(data=data, framework=framework, args=args,
-                                                reload_path=reload_path)
+        if not args.no_test:
+            # data = ds.prepare(['train'], col_set=["feature", "label"], data_key=DataHandlerLP.DK_L, )[0]
+            pred_y_all_incre = self.online_training(data=data, framework=framework, args=args,
+                                                    reload_path=reload_path)
 
-        label_all = ds.prepare(segments="train", col_set="label", data_key=DataHandlerLP.DK_R)
-        label_all = label_all.loc(axis=0)[self.test_slice].dropna(axis=0)
-        pred_y_all_incre = self._evaluate_metrics(pred_y_all_incre, "incre_model", label_all)
-        # pred_y_all_basic = self._evaluate_metrics(pred_y_all_basic, "basic_model", label_all)
-        if not os.path.exists(args.result_path):
-            os.makedirs(args.result_path)
-        if args.reload:
-            pd.to_pickle(pred_y_all_incre,
-                         os.path.join(args.result_path, f"DoubleAdapt_{args.model_name}_{args.year}Q{args.Q}_{args.test_end[6:]}.pkl"))
-        else:
-            pd.to_pickle(pred_y_all_incre,
-                         os.path.join(args.result_path, f"DoubleAdapt_{args.model_name}_{args.year}Q{args.Q}.pkl"))
+            label_all = ds.prepare(segments="train", col_set="label", data_key=DataHandlerLP.DK_R)
+            label_all = label_all.loc(axis=0)[self.test_slice].dropna(axis=0)
+            pred_y_all_incre = self._evaluate_metrics(pred_y_all_incre, "incre_model", label_all)
+            # pred_y_all_basic = self._evaluate_metrics(pred_y_all_basic, "basic_model", label_all)
+            if not os.path.exists(args.result_path):
+                os.makedirs(args.result_path)
+
+
+            year = int(args.test_start[:4])
+            Q = (int(args.test_start[5:7]) - 1) // 3 + 1
+            pred_y_all_incre.to_csv(os.path.join(args.result_path, f"DoubleAdapt_{args.model_name}_{year}Q{Q}.csv"))
 
 
 def str_to_bool(value):
@@ -532,7 +479,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--model_name', default='GRU')
-    parser.add_argument('--rank_label', type=str_to_bool, default=False)
+    parser.add_argument('--rank_label', type=str_to_bool, default=True)
     parser.add_argument('--naive', type=str_to_bool, default=False)
     parser.add_argument('--adapt_y', type=str_to_bool, default=True)
     parser.add_argument('--lr', type=float, default=0.001)
@@ -542,7 +489,6 @@ def parse_args():
     parser.add_argument('--early_stop', type=int, default=10)
     parser.add_argument('--skip_valid_epoch', type=int, default=10)
     parser.add_argument('--step', type=int, default=20)
-    parser.add_argument('--reload', type=str_to_bool, default=False)
     parser.add_argument('--result_path', default="./pred_output/")
     parser.add_argument('--model_path', default='./output/', help='learned model')
     parser.add_argument('--model_save_path', default="./output/INCRE/", help='updated model')
@@ -553,8 +499,8 @@ def parse_args():
     parser.add_argument('--incre_val_end', default='2022-12-31')
     parser.add_argument('--test_start', default='2021-01-01')
     parser.add_argument('--test_end', default='2023-06-30')
-    parser.add_argument('--year', type=str, default=None)
-    parser.add_argument('--Q', type=int, default=None)
+    parser.add_argument('--reload', action='store_true', default=False)
+    parser.add_argument('--no_test', action='store_true', default=False)
 
     # input for csi 300
     parser.add_argument('--stock2concept_matrix', default='../data/csi300_stock2concept.npy')
@@ -563,20 +509,29 @@ def parse_args():
 
     args = parser.parse_args()
 
-    retrain_segs = [('01-01', '03-31'), ('04-01', '06-30'), ('07-01', '09-30'), ('10-01', '12-31')]
-    if args.Q is None:
-        args.Q = (int(args.test_start[6:8]) - 1) // 3 + 1
-    elif not args.reload and args.year is not None:
-        args.test_start = f'{args.year}-{retrain_segs[args.Q][0]}'
-        args.test_end = f'{args.year}-{retrain_segs[args.Q][1]}'
-        args.incre_val_start = f'{args.year - args.Q == 1}-{retrain_segs[(args.Q - 1) % 4][0]}'
-        args.incre_val_end = f'{args.year - args.Q == 1}-{retrain_segs[(args.Q - 1) % 4][1]}'
-        args.incre_train_end = f'{args.year - args.Q <= 2}-{retrain_segs[(args.Q - 2) % 4][1]}'
-    if args.year is None:
-        args.year = int(args.test_start[:4])
+    if args.model_name in ['GRU', 'LSTM', 'ALSTM', 'SFM', 'MLP']:
+        args.stock2concept_matrix = None
+
+    if args.no_test:
+        args.test_end = args.incre_val_end
+        args.test_start = args.test_end
 
     if args.online_lr is not None:
         args.online_lr = eval(args.online_lr)
+
+    retrain_segs = [('01-01', '03-31'), ('04-01', '06-30'), ('07-01', '09-30'), ('10-01', '12-31')]
+    if args.reload:
+        # Require args for test. Ignore args for validation.
+        args.Q = ((int(args.test_start[5:7]) - 1) // 3 - 1) % 4 + 1
+        args.year = int(args.test_start[:4]) - args.Q == 4
+        args.incre_val_start = f'{args.year}-{retrain_segs[args.Q][0]}'
+        args.incre_val_end = f'{args.year}-{retrain_segs[args.Q][1]}'
+    else:
+        # Require arguments for validation.
+        args.Q = (int(args.incre_val_start[5:7]) - 1) // 3 + 1
+        args.year = int(args.incre_val_start[:4])
+        # assert args.incre_val_start[5:] == retrain_segs[args.Q - 1][0], print(args.incre_val_start[5:], retrain_segs[args.Q - 1][0])
+        # assert args.incre_val_end[5:] == retrain_segs[args.Q - 1][1], print(args.incre_val_end[5:], retrain_segs[args.Q - 1][1])
 
     args.model_path = os.path.join(args.model_path, args.model_name)
     args.model_save_path = os.path.join(args.model_path, args.model_name + '_DoubleAdapt')
@@ -585,20 +540,10 @@ def parse_args():
         for k, v in args.online_lr.items():
             online_lr_str += f'_online_{k}_{v}'
     checkpoint_name = f'{args.model_name}_DoubleAdapt_step{args.step}_{args.year}Q{args.Q}_lr{args.lr}_ma{args.lr_ma}_da{args.lr_da}{online_lr_str}.bin'
-
     args.reload_path = os.path.join(args.model_save_path, checkpoint_name) if args.reload else None
+    if args.reload and not os.path.exists(args.reload_path):
+        raise Exception(f"Need retraining! No checkpoint for DoubleAdapt {args.year}Q{args.Q}")
 
-    if args.reload:
-        if os.path.exists(args.reload_path):
-            raise Exception(f"Need retraining! No checkpoint for DoubleAdapt {args.year}Q{args.Q}")
-        else:
-            args.incre_val_start = f'{args.year - args.Q == 1}-{retrain_segs[(args.Q - 1) % 4][0]}'
-            args.incre_val_end = f'{args.year - args.Q == 1}-{retrain_segs[(args.Q - 1) % 4][1]}'
-
-    # if args.rank_label:
-    #     args.adapt_y = False
-    if args.model_name in ['GRU', 'LSTM', 'ALSTM', 'SFM', 'MLP']:
-        args.stock2concept_matrix = None
     return args
 
 
@@ -613,8 +558,9 @@ def setup_seed(seed):
 
 if __name__ == "__main__":
     args = parse_args()
+    print(args)
     setup_seed(0)
-    a = IncrementalExp(args=args, data_dir='crowd_data', rank_label=args.rank_label, adapt_y=args.adapt_y,
+    a = IncrementalExp(args=args, data_dir='cn_data', rank_label=args.rank_label, adapt_y=args.adapt_y,
                        naive=args.naive, early_stop=args.early_stop, step=args.step,
                        skip_valid_epoch=args.skip_valid_epoch,
                        lr=args.lr, lr_ma=args.lr_ma, lr_da=args.lr_da, online_lr=args.online_lr,

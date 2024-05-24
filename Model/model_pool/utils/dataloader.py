@@ -1,4 +1,5 @@
 import os.path
+import pathlib
 
 import torch
 import numpy as np
@@ -9,9 +10,9 @@ from qlib.config import REG_US, REG_CN
 from pathlib import Path
 import sys
 
-# provider_uri = "~/.qlib/qlib_data/cn_data"  # target_dir
+provider_uri = "~/.qlib/qlib_data/cn_data"  # target_dir
 # provider_uri = "../qlib_data/cn_data"  # target_dir
-provider_uri = "~/.qlib/qlib_data/crowd_data"
+# provider_uri = "/Users/haowang/Desktop/project/stock_model/qlib_data/cn_data"
 qlib.init(provider_uri=provider_uri, region=REG_CN)
 from qlib.data.dataset import DatasetH
 from qlib.data.dataset.handler import DataHandlerLP
@@ -665,11 +666,22 @@ def create_doubleadapt_loaders(args, rank_label=True, save=True, reload=True):
         'train': (args.incre_train_start, args.test_end)
     }
     DIRNAME = Path(__file__).absolute().resolve().parent
-    h_path = DIRNAME.parent / f"csi300_rank{rank_label}_alpha360_handler_horizon1.pkl"
+    h_path = DIRNAME / "handlers" / f"csi300_rank{rank_label}_alpha360_handler_horizon1"
+    if not os.path.exists(h_path):
+        os.makedirs(h_path)
+    h_path = h_path / f"{args.test_end}.pkl"
 
     # get dataset from qlib
-    if reload and os.path.exists(h_path):
-        handler = f"file://{h_path}"
+    if reload:
+        if os.path.exists(h_path):
+            handler = f"file://{h_path}"
+        else:
+            for file in h_path.parent.iterdir():
+                if pd.Timestamp(file.name[:-4]) >= pd.Timestamp(args.test_end):
+                    h_path = file.absolute()
+                    handler = f"file://{h_path}"
+                else:
+                    os.remove(file.absolute())
     dataset = DatasetH(handler, segments)
 
     if save and not isinstance(handler, str):
