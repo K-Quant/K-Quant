@@ -19,11 +19,11 @@ The main features of K-Quant:
 
 The dynamic financial KB construction module consists of three main steps:
 
-1. Evolved Knowledge Extraction Module: it extracts financial knowledge with evolved information from several reliable data sources.
+1. Evolved Knowledge Extraction: it extracts financial knowledge with evolved information from several reliable data sources.
 
-2. Temporal Record Linkage and Conflict Resolution Module: it removes duplicated and conflicted knowledge based on temporal information to increase the confidence of the delivered knowledge.
+2. Temporal Record Linkage and Conflict Resolution: it removes duplicated and conflicted knowledge based on temporal information to increase the confidence of the delivered knowledge.
 
-3. Dynamic Knowledge Update Module: it proposes a temporal pattern-based inference rule learning module to maintain our constructed KB consistent with the dynamically changing world.
+3. Dynamic Knowledge Update: it proposes a temporal pattern-based inference rule learning module to maintain our constructed KB consistent with the dynamically changing world.
 
 #### 2. Quantitative Investment Framework
 To handle temporal relations between companies and utilize the knowledge in quantitative investment, the K-Quant have three main functions in Quantitative Investment Framework:
