@@ -43,7 +43,7 @@ do
   --report_file "pred_output/platform_data/evaluation_$industry-3.pkl"
 
   # double adapt evaluation
-  python exp/evaluations.py --evaluation_start_date '2023-04-01' --evaluation_end_date '2024-04-30'\
+  python exp/evaluations.py --evaluation_start_date '2023-05-01' --evaluation_end_date '2024-04-30'\
   --industry_category $industry --predicted_file 'pred_output/da_preds_latest.pkl'\
   --report_file "pred_output/platform_data/da_evaluation_$industry-12.pkl"
   python exp/evaluations.py --evaluation_start_date '2023-11-01' --evaluation_end_date '2024-04-30'\
@@ -108,17 +108,17 @@ do
   --industry_category 'all'
 
     python exp/backtest.py --prefix 'pred_output/platform_data/da_backtest_data_all-' --backtest_start_date '2023-04-01'\
-  --backtest_end_date '2024-04-30' --topk strategy --predicted_file 'pred_output/da_preds_latest.pkl'\
+  --backtest_end_date '2024-04-30' --topk $strategy --predicted_file 'pred_output/da_preds_latest.pkl'\
   --backtest_file "pred_output/platform_data/da_backtest_result_all-12_$strategy.pkl" --time_scope "12_$strategy"\
   --industry_category 'all'
 
   python exp/backtest.py --prefix 'pred_output/platform_data/da_backtest_data_all-' --backtest_start_date '2023-11-01'\
-  --backtest_end_date '2024-04-30' --topk strategy --predicted_file 'pred_output/da_preds_latest.pkl'\
+  --backtest_end_date '2024-04-30' --topk $strategy --predicted_file 'pred_output/da_preds_latest.pkl'\
   --backtest_file "pred_output/platform_data/da_backtest_result_all-6_$strategy.pkl" --time_scope "6_$strategy"\
   --industry_category 'all'
 
   python exp/backtest.py --prefix 'pred_output/platform_data/da_backtest_data_all-' --backtest_start_date '2024-02-01'\
-  --backtest_end_date '2024-04-30' --topk strategy --predicted_file 'pred_output/da_preds_latest.pkl'\
+  --backtest_end_date '2024-04-30' --topk $strategy --predicted_file 'pred_output/da_preds_latest.pkl'\
   --backtest_file "pred_output/platform_data/da_backtest_result_all-3_$strategy.pkl" --time_scope "3_$strategy"\
   --industry_category 'all'
 done
