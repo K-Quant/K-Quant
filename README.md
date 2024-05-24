@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://img.shields.io/badge/platform-win%20%7C%20linux-yellow.svg)
 ![](https://img.shields.io/badge/python--language-2.7-red.svg)
-[![K-Quant Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=K-Quant%20website)](http://lccpu22.cse.ust.hk:8003/new/index.html#/welcome))
+[![K-Quant Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=K-Quant%20website)](http://lccpu22.cse.ust.hk:8003/new/index.html#/welcome)
 [![Survey](https://img.shields.io/badge/Survey%20%E2%AD%90-%23FF8000)](https://arxiv.org/abs/2308.04947)
 
 ## Overview
