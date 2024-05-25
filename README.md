@@ -37,7 +37,14 @@ To handle temporal relations between companies and utilize the knowledge in quan
 
      The complex stock market make deep learning model invalid soon because of the distribution shift. We propose incremental learning methods to mitigate the influence of such shift.
 
-#### 3. Evaluation and Interpretability Methods
+#### 3.Interpretability Methods and Performance Assessment
+To response the limitation of deep learning based methods without explanation of the prediction results, the K-Quant provides an explainers module for knowledge-based prediction models as well as an assessment module for assessing different models performance.
+  1. Interpretability Methods
+    
+     We build explainers models to identify the most relevant stocks from stocks relation graph of each prediction results coming from the selected stocks. With the help of knowledge graph, sufficient information is not only used to support quantitative investment, but also leveraged to explain the results of prediction models.
+  2. Assessment Modules
+   
+    
 
 <!-- TOC -->
 
