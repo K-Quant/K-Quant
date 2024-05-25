@@ -43,7 +43,12 @@ To response the limitation of deep learning based methods without explanation of
     
      We build explainers models to identify the most relevant stocks from stocks relation graph of each prediction results coming from the selected stocks. With the help of knowledge graph, sufficient information is not only used to support quantitative investment, but also leveraged to explain the results of prediction models.
   2. Assessment Modules
-   
+    
+     This system consists of two parts: (1)Multi-dimensional performance evaluation for different combinations of forecasting and explanatory models.(2)Performance assessment of different investment portfolios.
+     In the first part, users can select different forecasting and explanatory models as well as examination periods. The evaluation system will output comprehensive performance scores for different combinations.Additionally, the forecasting models in the first part will also provide recommendations of three stocks for users to consider.
+  In the second part, users can input different investment portfolios based on their own stock selection results, and test the performance of these portfolios over different time periods.
+
+
     
 
 <!-- TOC -->
