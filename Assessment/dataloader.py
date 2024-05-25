@@ -98,7 +98,7 @@ class DataLoader:
 
 
 def load_data_df(args):
-    data_path = r'{}/alpha360_2024.pkl'.format(args.data_root)
+    data_path = r'{}/alpha360.pkl'.format(args.data_root)
     with open(data_path, "rb") as fh:
         df_total = pickle.load(fh)
     slc = slice(pd.Timestamp(args.start_date), pd.Timestamp(args.end_date))

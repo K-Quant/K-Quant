@@ -92,20 +92,20 @@ def pair_wise_loss(pred, label, alpha=0.05):
     return point_wise + alpha * pair_wise
 
 
-def NDCG_loss(pred, label, alpha=0.05, k=100):
-    """
-    NDCG loss function
-    """
-    mask = ~torch.isnan(label)
-    pred = pred[mask]
-    label = label[mask]
-    index = torch.zeros(label.shape, dtype=torch.int64, device=pred.device)
-    ndcg = RetrievalNormalizedDCG(k=k)
-    ndcg_loss = alpha * ndcg(pred, label, indexes=index)
-    point_wise = mse(pred, label)
-    # point-wise decrease, model better
-    # ndcg increase, model better
-    return point_wise - ndcg_loss
+# def NDCG_loss(pred, label, alpha=0.05, k=100):
+#     """
+#     NDCG loss function
+#     """
+#     mask = ~torch.isnan(label)
+#     pred = pred[mask]
+#     label = label[mask]
+#     index = torch.zeros(label.shape, dtype=torch.int64, device=pred.device)
+#     ndcg = RetrievalNormalizedDCG(k=k)
+#     ndcg_loss = alpha * ndcg(pred, label, indexes=index)
+#     point_wise = mse(pred, label)
+#     # point-wise decrease, model better
+#     # ndcg increase, model better
+#     return point_wise - ndcg_loss
 
 
 def NDCG_evaluation(preds):
@@ -264,9 +264,6 @@ class DotDict(dict):
         if isinstance(value, dict):
             value = DotDict(value)
         return value
-
-
-
 
 
 
