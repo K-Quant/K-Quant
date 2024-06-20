@@ -24,4 +24,4 @@ res = pd.concat((
     pred_old.loc[pred_old.index < pred.index.min()], 
     pred), axis=0)
 
-res.to_csv('./exp/pred_output/preds.csv')
+res.to_csv('./exp/pred_output/preds.csv')# update 2024-06-20 19:59:21
