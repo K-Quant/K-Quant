@@ -82,6 +82,7 @@ class ReweightModel(Ensemble_model):
 
     
     def train(self, x_train, y_train):
+        if self.trained: return
         self.trained = True
         
         x_train, y_train = map(lambda x: torch.from_numpy(x).float(), (x_train, y_train))
