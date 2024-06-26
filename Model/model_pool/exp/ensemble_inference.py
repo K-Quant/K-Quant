@@ -236,8 +236,7 @@ def sjtu_ensemble(args, data, model_pool):
     btest_slc = slice(pd.Timestamp(args.test_start_date), pd.Timestamp(args.test_end_date))
     btrain_data = data[btrain_slc]
     btest_data = data[btest_slc]
-    with open('output/ensemble_model/sjtumodel.pkl', 'rb') as f:
-        ensemble_model = pickle.load(f)
+    ensemble_model = torch.load('output/ensemble_model/sjtumodel.bin')
     X = btrain_data[model_score].values
     y = btrain_data[['label']].values
     X_t = btest_data[model_score].values
