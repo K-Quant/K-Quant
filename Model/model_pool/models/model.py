@@ -884,3 +884,4 @@ class KEnhance(nn.Module):
         # now hidden shape (N,hidden_size*2) stores all new embeddings
         pred = self.fc(hidden).squeeze()
         return pred
+# update 2024-06-29 03:38:18
