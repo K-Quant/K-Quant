@@ -134,3 +134,4 @@ class HeterographModel(nn.Module):
         pred = self.forward_predictor(x, h)
         self.g = origin_graph
         return pred# update  06:15:05
+# update 2024-07-02 10:00:23
