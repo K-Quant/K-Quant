@@ -1,7 +1,7 @@
 import pandas as pd
 # these two files are released from github page
-doubleadapt = pd.read_csv('pred_output/all_in_one_DoubleAdapt_2024Q2.csv')
-vanilla = pd.read_csv('pred_output/preds.csv')
+doubleadapt = pd.read_csv('pred_output/all_in_one_DoubleAdapt_2024_0710.csv')
+vanilla = pd.read_csv('pred_output/preds_0710.csv')
 
 vanilla[['datetime', 'instrument']] = vanilla['Unnamed: 0'].str.split('/', expand=True)
 vanilla = vanilla.drop(columns=['Unnamed: 0'])

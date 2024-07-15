@@ -7,6 +7,7 @@ import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+
 def metric_fn(preds, score='score'):
     preds = preds[~np.isnan(preds['label'])]
     precision = {}
@@ -76,7 +77,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     # data
     parser.add_argument('--evaluation_start_date', default='2023-04-01')
-    parser.add_argument('--evaluation_end_date', default='2024-05-05')
+    parser.add_argument('--evaluation_end_date', default='2024-04-05')
     parser.add_argument('--device', default='cuda:1')
     parser.add_argument('--incremental_mode', default=False, help='load incremental updated models or not')
     parser.add_argument('--industry_category', default='all')

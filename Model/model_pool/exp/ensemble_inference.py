@@ -236,8 +236,9 @@ def sjtu_ensemble(args, data, model_pool):
     btest_slc = slice(pd.Timestamp(args.test_start_date), pd.Timestamp(args.test_end_date))
     btrain_data = data[btrain_slc]
     btest_data = data[btest_slc]
-    with open('output/ensemble_model/sjtumodel.pkl', 'rb') as f:
-        ensemble_model = pickle.load(f)
+    # with open('output/ensemble_model/sjtumodel.pkl', 'rb') as f:
+    #     ensemble_model = pickle.load(f)
+    ensemble_model = torch.load('output/ensemble_model/sjtumodel.bin')
     X = btrain_data[model_score].values
     y = btrain_data[['label']].values
     X_t = btest_data[model_score].values
@@ -359,9 +360,9 @@ def parse_args():
     """
     parser = argparse.ArgumentParser()
     # data
-    parser.add_argument('--test_start_date', default='2023-04-01')
-    parser.add_argument('--blend_split_date', default='2023-12-31')
-    parser.add_argument('--test_end_date', default='2024-05-05')
+    parser.add_argument('--test_start_date', default='2023-04-08')
+    parser.add_argument('--blend_split_date', default='2024-01-08')
+    parser.add_argument('--test_end_date', default='2024-07-08')
     parser.add_argument('--device', default='cuda:1')
     parser.add_argument('--incremental_mode', default=False, help='load incremental updated models or not')
     parser.add_argument('--prefix', default='output/')
