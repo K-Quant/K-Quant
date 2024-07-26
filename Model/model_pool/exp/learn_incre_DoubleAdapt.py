@@ -236,7 +236,7 @@ class IncrementalExp:
                f"_rank{self.rank_label}_{self.tag}"
 
     def _init_model(self, args):
-        param_dict = json.load(open(args.model_path + '/info.json'))['config']
+        param_dict = json.load(open(args.model_path + args.model_name + '/info.json'))['config']
         param_dict['model_dir'] = args.model_path
 
         print('load model ', param_dict['model_name'])
@@ -272,7 +272,8 @@ class IncrementalExp:
         # model.load_state_dict(torch.load(param_dict['model_dir'] + '/model.bin', map_location=args.device))
         return model
 
-    def offline_training(self, args, segments: Dict[str, tuple] = None, data: pd.DataFrame = None, reload_path=None):
+    def offline_training(self, args, segments: Dict[str, tuple] = None, data: pd.DataFrame = None,
+                         reload: bool = False, model_save_path=None):
         model = self._init_model(args)
         model.to(args.device)
 
@@ -294,10 +295,13 @@ class IncrementalExp:
                                            day_by_day=self.day_by_day,
                                            stock_index_table=self.stock_index_table,
                                            relation_matrix=self.relation_matrix)
-        if reload_path is not None and os.path.exists(reload_path):
-            framework.load_state_dict(torch.load(reload_path))
-            print('Reload checkpoint from', reload_path)
+        if reload and os.path.exists(model_save_path):
+            framework.load_state_dict(torch.load(model_save_path))
+            print('Reload checkpoint from', model_save_path)
         else:
+            if args.resume and os.path.exists(model_save_path):
+                framework.load_state_dict(torch.load(model_save_path))
+                print('Reload checkpoint from', model_save_path)
             if segments is None:
                 segments = self.segments
             # rolling_tasks = utils.organize_all_tasks(segments,
@@ -320,11 +324,11 @@ class IncrementalExp:
                                   for k in ['train', 'valid']}
             framework.fit(meta_tasks_train=rolling_tasks_data['train'],
                           meta_tasks_val=rolling_tasks_data['valid'],
-                          checkpoint_path=args.reload_path)
+                          checkpoint_path=model_save_path)
         return framework
 
     def online_training(self, args, segments: Dict[str, tuple] = None,
-                        data: pd.DataFrame = None, reload_path: str = None, framework=None, ):
+                        data: pd.DataFrame = None, framework=None, ):
         """
         Perform incremental learning on the test data.
 
@@ -341,7 +345,7 @@ class IncrementalExp:
                 the index col is pd.MultiIndex with the datetime as level 0 and the stock ID as level 1;
                 the col named 'feature' contains the stock feature vectors;
                 the col named 'label' contains the ground-truth labels.
-            reload_path (str):
+            model_save_path (str):
                 if not None, reload checkpoints
 
         Returns:
@@ -372,9 +376,9 @@ class IncrementalExp:
                                                day_by_day=self.day_by_day,
                                                stock_index_table=self.stock_index_table,
                                                relation_matrix=self.relation_matrix)
-            if reload_path is not None:
-                framework.load_state_dict(torch.load(reload_path))
-                print('Reload checkpoint from', reload_path)
+            if args.reload and args.model_save_path is not None:
+                framework.load_state_dict(torch.load(args.model_save_path))
+                print('Reload checkpoint from', args.model_save_path)
         else:
             model = self._init_model(args)
             model.to(args.device)
@@ -429,28 +433,26 @@ class IncrementalExp:
         pprint(metrics)
         return df
 
-    def workflow(self, args, reload_path: str = None):
-        if args.model_save_path:
-            if not os.path.exists(args.model_save_path):
-                os.makedirs(args.model_save_path)
-            # save_path = os.path.join(args.model_save_path, f"{self.experiment_name}.pt")
-
+    def workflow(self, args):
         from model_pool.utils.dataloader import create_doubleadapt_loaders
         ds = create_doubleadapt_loaders(args, self.rank_label)
         data = ds.prepare(['train'], col_set=["feature", "label"], data_key=DataHandlerLP.DK_L, )[0]
 
         print(self.segments)
         assert data.index[0][0] <= self.ta.align_time(self.segments['train'][0], tp_type='start'), print(data.index[0][0])
-        assert data.index[-1][0] >= self.ta.align_time(self.segments['test'][-1], tp_type='end'), print(data.index[-1][0])
+        # assert data.index[-1][0] >= self.ta.align_time(self.segments['test'][-1], tp_type='end'), print(data.index[-1][0], self.ta.align_time(self.segments['test'][-1], tp_type='end'))
         print("offline_training")
-        framework = self.offline_training(args=args, data=data, reload_path=reload_path)
+        framework = self.offline_training(args=args, data=data, reload=args.reload, model_save_path=args.model_save_path)
 
         print("evaluation")
 
         if not args.no_test:
+            # args.online_lr['lr_model'] = 0.0002
+            # framework.lr_model = 0.0002
+            # args.online_lr['lr_ma'] = 0.0001
+            # framework.framework.opt.param_groups[0]['lr'] = args.online_lr['lr_ma']
             # data = ds.prepare(['train'], col_set=["feature", "label"], data_key=DataHandlerLP.DK_L, )[0]
-            pred_y_all_incre = self.online_training(data=data, framework=framework, args=args,
-                                                    reload_path=reload_path)
+            pred_y_all_incre = self.online_training(data=data, framework=framework, args=args)
 
             label_all = ds.prepare(segments="train", col_set="label", data_key=DataHandlerLP.DK_R)
             label_all = label_all.loc(axis=0)[self.test_slice].dropna(axis=0)
@@ -487,8 +489,8 @@ def parse_args():
     parser.add_argument('--lr_da', type=float, default=0.01)
     parser.add_argument('--online_lr', type=str, default=None)
     parser.add_argument('--early_stop', type=int, default=10)
-    parser.add_argument('--skip_valid_epoch', type=int, default=10)
-    parser.add_argument('--step', type=int, default=20)
+    parser.add_argument('--skip_valid_epoch', type=int, default=1)
+    parser.add_argument('--step', type=int, default=5)
     parser.add_argument('--result_path', default="./pred_output/")
     parser.add_argument('--model_path', default='./output/', help='learned model')
     parser.add_argument('--model_save_path', default="./output/INCRE/", help='updated model')
@@ -500,6 +502,7 @@ def parse_args():
     parser.add_argument('--test_start', default='2021-01-01')
     parser.add_argument('--test_end', default='2023-06-30')
     parser.add_argument('--reload', action='store_true', default=False)
+    parser.add_argument('--resume', action='store_true', default=False)
     parser.add_argument('--no_test', action='store_true', default=False)
 
     # input for csi 300
@@ -509,8 +512,9 @@ def parse_args():
 
     args = parser.parse_args()
 
-    if args.model_name in ['GRU', 'LSTM', 'ALSTM', 'SFM', 'MLP']:
+    if args.model_name in ['GRU', 'LSTM', 'ALSTM', 'SFM', 'MLP', 'GATs']:
         args.stock2concept_matrix = None
+        args.stock2stock_matrix = None
 
     if args.no_test:
         args.test_end = args.incre_val_end
@@ -522,10 +526,10 @@ def parse_args():
     retrain_segs = [('01-01', '03-31'), ('04-01', '06-30'), ('07-01', '09-30'), ('10-01', '12-31')]
     if args.reload:
         # Require args for test. Ignore args for validation.
-        args.Q = ((int(args.test_start[5:7]) - 1) // 3 - 1) % 4 + 1
-        args.year = int(args.test_start[:4]) - args.Q == 4
-        args.incre_val_start = f'{args.year}-{retrain_segs[args.Q][0]}'
-        args.incre_val_end = f'{args.year}-{retrain_segs[args.Q][1]}'
+        args.Q = ((int(args.test_end[5:7]) - 1) // 3 - 1) % 4 + 1
+        args.year = int(args.test_end[:4]) - (args.Q == 4)
+        args.incre_val_start = f'{args.year}-{retrain_segs[args.Q - 1][0]}'
+        args.incre_val_end = f'{args.year}-{retrain_segs[args.Q - 1][1]}'
     else:
         # Require arguments for validation.
         args.Q = (int(args.incre_val_start[5:7]) - 1) // 3 + 1
@@ -533,16 +537,21 @@ def parse_args():
         # assert args.incre_val_start[5:] == retrain_segs[args.Q - 1][0], print(args.incre_val_start[5:], retrain_segs[args.Q - 1][0])
         # assert args.incre_val_end[5:] == retrain_segs[args.Q - 1][1], print(args.incre_val_end[5:], retrain_segs[args.Q - 1][1])
 
-    args.model_path = os.path.join(args.model_path, args.model_name)
-    args.model_save_path = os.path.join(args.model_path, args.model_name + '_DoubleAdapt')
     online_lr_str = ''
     if args.online_lr is not None:
         for k, v in args.online_lr.items():
             online_lr_str += f'_online_{k}_{v}'
-    checkpoint_name = f'{args.model_name}_DoubleAdapt_step{args.step}_{args.year}Q{args.Q}_lr{args.lr}_ma{args.lr_ma}_da{args.lr_da}{online_lr_str}.bin'
-    args.reload_path = os.path.join(args.model_save_path, checkpoint_name) if args.reload else None
-    if args.reload and not os.path.exists(args.reload_path):
-        raise Exception(f"Need retraining! No checkpoint for DoubleAdapt {args.year}Q{args.Q}")
+    # checkpoint_name = f'{args.model_name}_DoubleAdapt_step{args.step}_{args.year}Q{args.Q}_lr{args.lr}_ma{args.lr_ma}_da{args.lr_da}{online_lr_str}.bin'
+    # checkpoint_name = f'{args.model_name}_DoubleAdapt_step{args.step}_{args.year}Q{args.Q}_lr{args.lr}_ma{args.lr_ma}_da{args.lr_da}_online_lr_da_{args.lr_da / 10}.bin'
+    checkpoint_name = f'{args.model_name}_DoubleAdapt_step{args.step}_{args.year}Q{args.Q}_lr{args.lr}_ma{args.lr_ma}_da{args.lr_da}.bin'
+    if args.model_path is not None:
+        args.model_save_path = os.path.join(args.model_path, args.model_name + '_DoubleAdapt')
+        if not os.path.exists(args.model_save_path):
+            os.makedirs(args.model_save_path)
+        args.model_save_path = os.path.join(args.model_save_path, checkpoint_name)
+
+    if args.reload and not os.path.exists(args.model_save_path):
+        raise Exception(f"Need retraining! No checkpoint:", args.model_save_path)
 
     return args
 
@@ -559,11 +568,11 @@ def setup_seed(seed):
 if __name__ == "__main__":
     args = parse_args()
     print(args)
-    setup_seed(0)
+    setup_seed(1)
     a = IncrementalExp(args=args, data_dir='cn_data', rank_label=args.rank_label, adapt_y=args.adapt_y,
                        naive=args.naive, early_stop=args.early_stop, step=args.step,
                        skip_valid_epoch=args.skip_valid_epoch,
                        lr=args.lr, lr_ma=args.lr_ma, lr_da=args.lr_da, online_lr=args.online_lr,
                        relation_path=args.stock2concept_matrix if args.model_name == 'HIST' else args.stock2stock_matrix,
                        stock_index_path=args.stock_index)
-    a.workflow(args=args, reload_path=args.reload_path)
+    a.workflow(args=args)

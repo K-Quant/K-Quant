@@ -237,7 +237,8 @@ def generate_rolling_tasks(first_task_segment: Dict[Text, Tuple], step: int,
                 else:
                     task[k] = time_adjuster.shift(v, step=step, rtype=TimeAdjuster.SHIFT_SD)
             rolling_tasks.append(task)
-            if rolling_tasks[-1]['test'][-1] >= time_adjuster.align_time(end_date, tp_type='end'):
+            if rolling_tasks[-1]['test'][-1] is None or \
+                    rolling_tasks[-1]['test'][-1] >= time_adjuster.align_time(end_date, tp_type='end'):
                 rolling_tasks[-1]['test'] = (rolling_tasks[-1]['test'][0],
                                              time_adjuster.align_time(end_date, tp_type='end'))
                 break
@@ -374,13 +375,13 @@ def preprocess(task_data_list: List[Dict[str, Union[np.ndarray, pd.Index]]],
             for dt in data_type:
                 k = "X_" + dt
                 if sequence_last_dim:
-                    task_data[k] = task_data[k].reshape(len(task_data[k]), factor_num, -1)
+                    task_data[k] = task_data[k].reshape(len(task_data[k]), factor_num, task_data[k].shape[-1] // factor_num)
                     if isinstance(task_data[k], torch.Tensor):
                         task_data[k] = task_data[k].permute(0, 2, 1)
                     else:
                         task_data[k] = task_data[k].transpose(0, 2, 1)
                 else:
-                    task_data[k] = task_data[k].reshape(len(task_data[k]), -1, factor_num)
+                    task_data[k] = task_data[k].reshape(len(task_data[k]), task_data[k].shape[-1] // factor_num, factor_num)
 
         test_date = task_data["test_idx"].codes[0] - task_data["test_idx"].codes[0][0]
         task_data["meta_end"] = (test_date <= (test_date[-1] - H + 1)).sum()

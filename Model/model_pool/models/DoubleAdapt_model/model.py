@@ -53,7 +53,8 @@ class IncrementalManager:
         self.framework = self._init_framework(model, x_dim, lr_model, need_permute=need_permute, **kwargs)
         self.opt = self._init_meta_optimizer(**kwargs)
         self.day_by_day = day_by_day
-        self.relation_matrix = relation_matrix.to(self.framework.device)
+
+        self.relation_matrix = None if relation_matrix is None else relation_matrix.to(self.framework.device)
         self.stock_index_table = stock_index_table
 
     def _init_framework(self, model: nn.Module, x_dim: int = None, lr_model=0.001,
@@ -188,6 +189,8 @@ class IncrementalManager:
         loss.backward()
         self.framework.opt.step()
         self.framework.opt.zero_grad()
+        if phase == 'train':
+            return None
         with torch.no_grad():
             pred = self.framework(meta_input["X_test"].to(self.framework.device), model=None)
         return pred.detach().cpu().numpy()
@@ -425,6 +428,7 @@ class DoubleAdaptManager(IncrementalManager):
                 loss_y = loss_y * self.reg
             loss_y.backward()
         loss.backward()
+        torch.nn.utils.clip_grad_value_(self.framework.parameters(), 3.)
         if self.adapt_x or self.adapt_y:
             self.opt.step()
         self.framework.opt.step()
@@ -469,7 +473,6 @@ class DoubleAdaptManager(IncrementalManager):
 
             loss2 = self.framework.criterion(torch.cat(y_hats, 0), y)
             diffopt.step(loss2)
-
         """ Online inference """
         if phase != "train" and "X_extra" in meta_input and meta_input["X_extra"].shape[0] > 0:
             X_test = torch.cat([meta_input["X_extra"].to(self.framework.device), meta_input["X_test"].to(self.framework.device), ], 0, )
@@ -518,6 +521,7 @@ class DoubleAdaptManager(IncrementalManager):
             loss_y = F.mse_loss(y, raw_y) * self.reg
             loss_y.backward()
         loss.backward()
+        torch.nn.utils.clip_grad_value_(self.framework.parameters(), 3.)
         if self.adapt_x or self.adapt_y:
             self.opt.step()
         self.framework.opt.step()
