@@ -530,6 +530,7 @@ def parse_args():
         args.year = int(args.test_end[:4]) - (args.Q == 4)
         args.incre_val_start = f'{args.year}-{retrain_segs[args.Q - 1][0]}'
         args.incre_val_end = f'{args.year}-{retrain_segs[args.Q - 1][1]}'
+        args.test_start = f'{args.year}-{retrain_segs[args.Q][0]}'
     else:
         # Require arguments for validation.
         args.Q = (int(args.incre_val_start[5:7]) - 1) // 3 + 1
@@ -551,7 +552,7 @@ def parse_args():
         args.model_save_path = os.path.join(args.model_save_path, checkpoint_name)
 
     if args.reload and not os.path.exists(args.model_save_path):
-        raise Exception(f"Need retraining! No checkpoint:", args.model_save_path)
+        print(f"Need retraining! No checkpoint:", args.model_save_path)
 
     return args
 
