@@ -16,12 +16,12 @@ local=$1
 end_date=$2
 
 # step 1
-#response=$(curl -s https://api.github.com/repos/chenditc/investment_data/releases/latest)
-#version=$(echo "$response" | grep 'tag_name' | cut -d'"' -f4)
-#wget https://github.com/chenditc/investment_data/releases/download/$version/qlib_bin.tar.gz
-## the target folder need to be created first
-#tar -zxvf qlib_bin.tar.gz -C ../../../stock_model/qlib_data/cn_data --strip-components=1
-#rm qlib_bin.tar.gz
+response=$(curl -s https://api.github.com/repos/chenditc/investment_data/releases/latest)
+version=$(echo "$response" | grep 'tag_name' | cut -d'"' -f4)
+wget https://github.com/chenditc/investment_data/releases/download/$version/qlib_bin.tar.gz
+# the target folder need to be created first
+tar -zxvf qlib_bin.tar.gz -C ../../../stock_model/qlib_data/cn_data --strip-components=1
+rm qlib_bin.tar.gz
 
 # step 2 make sure you have download latest pred file and put them into pred_output folder
 # if not, here is the url: https://github.com/Hexagram-Sun/stock_preds/releases/tag/preds
