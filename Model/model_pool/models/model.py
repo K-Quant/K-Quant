@@ -3,10 +3,8 @@ import torch.nn as nn
 import torch.nn.init as init
 import numpy as np
 import sys
-from pathlib import Path
-DIRNAME = Path(__file__).absolute().resolve().parent
-sys.path.insert(0, str(DIRNAME.parent.parent))
-from model_pool.utils.utils import cal_cos_similarity
+sys.path.append("..")
+from utils.utils import cal_cos_similarity
 
 
 class MLP(nn.Module):
@@ -81,7 +79,7 @@ class HIST(nn.Module):
         cos_similarity[cos_similarity != cos_similarity] = 0
         return cos_similarity
 
-    def forward(self, x, concept_matrix, market_value=None):
+    def forward(self, x, concept_matrix, market_value):
         # N = the number of stock in current slice
         # F = feature length
         # T = number of days, usually = 60, since F*T should be 360
@@ -95,14 +93,12 @@ class HIST(nn.Module):
         # get the last layer embeddings
 
         # Predefined Concept Module
-        if market_value is not None:
-            market_value_matrix = market_value.reshape(market_value.shape[0], 1).repeat(1, concept_matrix.shape[1])
-            # make the market value matrix the same size as the concept matrix by repeat
-            # market value matrix shape: (N, number of pre define concepts)
-            stock_to_concept = concept_matrix * market_value_matrix
-        else:
-            stock_to_concept = concept_matrix
-            # torch.sum generate (1, number of pre define concepts) -> repeat (N, number of predefine concepts)
+
+        market_value_matrix = market_value.reshape(market_value.shape[0], 1).repeat(1, concept_matrix.shape[1])
+        # make the market value matrix the same size as the concept matrix by repeat
+        # market value matrix shape: (N, number of pre define concepts)
+        stock_to_concept = concept_matrix * market_value_matrix
+        # torch.sum generate (1, number of pre define concepts) -> repeat (N, number of predefine concepts)
         # 对应每个concept 得到其相关所有股票市值的和, sum在哪个维度上操作，哪个维度被压缩成1
         stock_to_concept_sum = torch.sum(stock_to_concept, 0).reshape(1, -1).repeat(stock_to_concept.shape[0], 1)
         # mul得到结果 （N，number of predefine concepts），每个股票对应的概念不再是0或1，而是0或其相关股票市值之和
@@ -191,13 +187,16 @@ class HIST(nn.Module):
         pred_all = self.fc_out(all_info).squeeze()
         return pred_all
 
-
 class GRU(nn.Module):
     def __init__(self, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0):
         super().__init__()
+     
+        self.net = nn.Sequential()
+        self.net.add_module("fc_in", nn.Linear(in_features=d_feat, out_features=hidden_size))
+        self.net.add_module("act", nn.Tanh())
 
         self.gru = nn.GRU(
-            input_size=d_feat,
+            input_size=hidden_size,
             hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=True,
@@ -211,7 +210,7 @@ class GRU(nn.Module):
         # x shape N, F*T
         x = x.reshape(len(x), self.d_feat, -1)  # [N, F, T]
         x = x.permute(0, 2, 1)  # [N, T, F]
-        out, _ = self.gru(x)
+        out, _ = self.gru(self.net(x))
         # deliver the last layer as output
         return self.fc(out[:, -1, :]).squeeze()
 
@@ -555,13 +554,9 @@ class ALSTM(nn.Module):
 
 
 class relation_GATs(nn.Module):
-    def __init__(self, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0, base_model="GRU", num_relation=0):
+    def __init__(self, num_relation, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0, base_model="GRU"):
         super().__init__()
-        self.relation_stocks = None
-        self.attention_weight = None
-        self.relation_matrix = None
-        self.using_effect = False
-        self.using_attention = False
+
         self.d_feat = d_feat
         self.hidden_size = hidden_size
 
@@ -600,13 +595,7 @@ class relation_GATs(nn.Module):
         # update embedding using relation_matrix
         # relation matrix shape [N, N]
         ei = x_hidden.unsqueeze(1).repeat(1, relation_matrix.shape[0], 1)  # shape N,N,64
-        hidden_batch = x_hidden.unsqueeze(0).repeat(relation_matrix.shape[0], 1, 1) # shape N,N,64
-
-        hidden_batch = hidden_batch.detach()
-        hidden_batch.requires_grad = True
-        relation_matrix = relation_matrix.detach()
-        relation_matrix.requires_grad = True
-
+        hidden_batch = x_hidden.unsqueeze(0).repeat(relation_matrix.shape[0], 1, 1)  # shape N,N,64
         matrix = torch.cat((ei, hidden_batch), 2)  # matrix shape N,N,64*2
         weight = (torch.matmul(matrix, self.W) + self.b).squeeze(2)  # weight shape N,N
         weight = self.leaky_relu(weight)  # relu layer
@@ -621,19 +610,11 @@ class relation_GATs(nn.Module):
         hidden = torch.cat((x_hidden, hidden), 1)
         # now hidden shape (N,64) stores all new embeddings
         pred = self.fc(hidden).squeeze()
-        if self.using_effect:
-            self.relation_stocks = hidden_batch
-            self.relation_matrix = relation_matrix
-        if self.using_attention:
-            self.attention_weight = valid_weight
         return pred
-
-    def using_effect_explanation(self):
-        self.using_effect = True
 
 
 class relation_GATs_3heads(nn.Module):
-    def __init__(self, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0, base_model="GRU"):
+    def __init__(self, num_relation, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0, base_model="GRU"):
         super().__init__()
 
         self.d_feat = d_feat
