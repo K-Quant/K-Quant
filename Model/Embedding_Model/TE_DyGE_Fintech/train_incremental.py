@@ -237,3 +237,4 @@ emb = epochs_embeddings[best_epoch]
 np.savez(SAVE_DIR + '/{}_embs_{}_{}.npz'.format(FLAGS.model, FLAGS.dataset, FLAGS.time_steps - 2), data=emb)
 # update  10:30:34
 # update 2023-12-26 18:11:37
+# update 2024-07-29 11:42:49
