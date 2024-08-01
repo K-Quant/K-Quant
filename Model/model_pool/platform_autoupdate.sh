@@ -12,15 +12,38 @@
   to be modified for latest result.
 BLOCK
 
+local=$1
+end_date=$2
+
+start_date="2024-07-09"
+device="cuda:0"
+
 # step 1
-wget https://github.com/chenditc/investment_data/releases/download/2024-05-10/qlib_bin.tar.gz
+response=$(curl -s https://api.github.com/repos/chenditc/investment_data/releases/latest)
+version=$(echo "$response" | grep 'tag_name' | cut -d'"' -f4)
+wget https://github.com/chenditc/investment_data/releases/download/$version/qlib_bin.tar.gz
 # the target folder need to be created first
 tar -zxvf qlib_bin.tar.gz -C ../../../stock_model/qlib_data/cn_data --strip-components=1
 rm qlib_bin.tar.gz
 
 # step 2 make sure you have download latest pred file and put them into pred_output folder
 # if not, here is the url: https://github.com/Hexagram-Sun/stock_preds/releases/tag/preds
-python exp/preds_file_convert.py
+
+response=$(curl -s https://api.github.com/repos/Hexagram-Sun/stock_preds/releases/latest)
+url=$(echo "$response" | grep 'body' | cut -d'"' -f4 | cut -d'(' -f2 | cut -d')' -f1)
+wget $url
+tar -zxvf models_and_preds.tar.gz -C exp/pred_output --strip-components=1
+
+if [ $local -gt 0 ]; then
+  bash get_prediction.sh $start_date $end_date $device
+  cd exp/
+  sh scripts/DoubleAdapt_infer.sh $end_date
+  python all_in_one.py
+  cd ../
+fi
+cd exp/
+python preds_file_convert.py
+cd ../
 
 # step 3 ensemble learning
 python exp/ensemble_inference.py --reference_file 'pred_output/vanilla_preds_latest.pkl' \

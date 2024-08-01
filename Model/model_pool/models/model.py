@@ -81,7 +81,7 @@ class HIST(nn.Module):
         cos_similarity[cos_similarity != cos_similarity] = 0
         return cos_similarity
 
-    def forward(self, x, concept_matrix, market_value=None):
+    def forward(self, x, concept_matrix, market_value):
         # N = the number of stock in current slice
         # F = feature length
         # T = number of days, usually = 60, since F*T should be 360
@@ -95,14 +95,12 @@ class HIST(nn.Module):
         # get the last layer embeddings
 
         # Predefined Concept Module
-        if market_value is not None:
-            market_value_matrix = market_value.reshape(market_value.shape[0], 1).repeat(1, concept_matrix.shape[1])
-            # make the market value matrix the same size as the concept matrix by repeat
-            # market value matrix shape: (N, number of pre define concepts)
-            stock_to_concept = concept_matrix * market_value_matrix
-        else:
-            stock_to_concept = concept_matrix
-            # torch.sum generate (1, number of pre define concepts) -> repeat (N, number of predefine concepts)
+
+        market_value_matrix = market_value.reshape(market_value.shape[0], 1).repeat(1, concept_matrix.shape[1])
+        # make the market value matrix the same size as the concept matrix by repeat
+        # market value matrix shape: (N, number of pre define concepts)
+        stock_to_concept = concept_matrix * market_value_matrix
+        # torch.sum generate (1, number of pre define concepts) -> repeat (N, number of predefine concepts)
         # 对应每个concept 得到其相关所有股票市值的和, sum在哪个维度上操作，哪个维度被压缩成1
         stock_to_concept_sum = torch.sum(stock_to_concept, 0).reshape(1, -1).repeat(stock_to_concept.shape[0], 1)
         # mul得到结果 （N，number of predefine concepts），每个股票对应的概念不再是0或1，而是0或其相关股票市值之和
@@ -191,13 +189,16 @@ class HIST(nn.Module):
         pred_all = self.fc_out(all_info).squeeze()
         return pred_all
 
-
 class GRU(nn.Module):
     def __init__(self, d_feat=6, hidden_size=64, num_layers=2, dropout=0.0):
         super().__init__()
+     
+        self.net = nn.Sequential()
+        self.net.add_module("fc_in", nn.Linear(in_features=d_feat, out_features=hidden_size))
+        self.net.add_module("act", nn.Tanh())
 
         self.gru = nn.GRU(
-            input_size=d_feat,
+            input_size=hidden_size,
             hidden_size=hidden_size,
             num_layers=num_layers,
             batch_first=True,
@@ -211,7 +212,7 @@ class GRU(nn.Module):
         # x shape N, F*T
         x = x.reshape(len(x), self.d_feat, -1)  # [N, F, T]
         x = x.permute(0, 2, 1)  # [N, T, F]
-        out, _ = self.gru(x)
+        out, _ = self.gru(self.net(x))
         # deliver the last layer as output
         return self.fc(out[:, -1, :]).squeeze()
 

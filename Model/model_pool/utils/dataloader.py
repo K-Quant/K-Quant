@@ -1,3 +1,4 @@
+import os
 import os.path
 import pathlib
 
@@ -288,6 +289,8 @@ def create_loaders(args, device):
     df_market_value = df_market_value / 1000000000
     # market value of every day from 07 to 20
     stock_index = np.load(args.stock_index, allow_pickle=True).item()
+    for k, v in stock_index.items():
+        if v > 734: stock_index[k] = 733
 
     start_index = 0
     slc = slice(pd.Timestamp(args.train_start_date), pd.Timestamp(args.train_end_date))
