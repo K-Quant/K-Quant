@@ -25,7 +25,7 @@ import logging
 
 
 logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
-device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
+# device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
 
 EPS = 1e-12
 warnings.filterwarnings('ignore')
@@ -163,7 +163,7 @@ def train_epoch(epoch, model, optimizer, train_loader, writer, args,
         optimizer.step()
 
 
-def test_epoch(epoch, model, test_loader, writer, args, stock2concept_matrix=None, stock2stock_matrix=None, prefix='Test'):
+def test_epoch(epoch, model, test_loader, writer, args, stock2concept_matrix=None, stock2stock_matrix=None, prefix='Test', return_preds=False):
     """
     :return: loss -> mse
              scores -> ic
@@ -195,6 +195,7 @@ def test_epoch(epoch, model, test_loader, writer, args, stock2concept_matrix=Non
         losses.append(loss.item())
     # evaluate
     preds = pd.concat(preds, axis=0)
+    if return_preds: return preds
     # use metric_fn to compute precision, recall, ic and rank ic
     precision, recall, ic, rank_ic, ndcg = metric_fn(preds)
 
@@ -292,6 +293,12 @@ def main(args):
         else:
             model = get_model(args.model_name)(d_feat=args.d_feat, num_layers=args.num_layers)
         
+        if args.weight_path:
+            sd = torch.load(args.weight_path, map_location='cpu')
+            # print(dict(model.named_parameters()).keys())
+            # print(dict(sd).keys())
+            print(model.load_state_dict(sd))
+            
         model.to(device)
 
         optimizer = optim.Adam(model.parameters(), lr=args.lr)
@@ -363,9 +370,9 @@ def main(args):
             # save the pkl every repeat time
             # pred.to_pickle(output_path+'/pred.pkl.'+name+str(times))
 
-            precision, recall, ic, rank_ic, ndcg = metric_fn(pred)
+            precision, recall, ic, rank_ic, ndcg = metric_fn(pred.fillna(0))
 
-            pprint('%s: IC %.6f Rank IC %.6f' % (name, ic.mean(), rank_ic.mean()))
+            pprint('%s: IC %.6f Rank IC %.6f' % (name, ic, rank_ic))
             pprint(name, ': Precision ', precision)
             pprint(name, ': Recall ', recall)
             pprint(name, ':NDCG', ndcg)
@@ -407,7 +414,8 @@ def main(args):
     for k in range(len(N)):
         pprint('Precision@%d: %.4f (%.4f)' % (N[k], precision_mean[k], precision_std[k]))
         pprint('NDCG@%d: %.4f (%.4f)' % (N[k], ndcg_mean[k], ndcg_std[k]))
-
+    pred = test_epoch(-1, model, test_loader, writer, args, stock2concept_matrix, stock2stock_matrix, prefix='Test', return_preds=True)
+    pred.to_csv(os.path.join(output_path, 'pred.csv'))
     pprint('finished.')
 
 
@@ -436,6 +444,7 @@ def parse_args():
     parser.add_argument('--dropout', type=float, default=0.1)
     parser.add_argument('--K', type=int, default=1)
     parser.add_argument('--loss_type', default='')
+    parser.add_argument('--weight_path', default='')
     # for ts lib model
     parser.add_argument('--seq_len', type=int, default=60)
     parser.add_argument('--moving_avg', type=int, default=21)
@@ -505,7 +514,7 @@ if __name__ == '__main__':
     args = parse_args()
     device = args.device if torch.cuda.is_available() else 'cpu'
     train_loader, valid_loader, test_loader = create_loaders(args, device=device)
-    # main(args)
+    main(args)
 
 
 
