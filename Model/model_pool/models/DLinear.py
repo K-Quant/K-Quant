@@ -84,3 +84,4 @@ class DLinear_model(nn.Module):
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None):
         dec_out = self.regression(x_enc)
         return dec_out.squeeze() # [B, 1]
+# update 2024-09-19 19:37:45
