@@ -145,3 +145,4 @@ do
   --backtest_file "pred_output/platform_data/da_backtest_result_all-3_$strategy.pkl" --time_scope "3_$strategy"\
   --industry_category 'all'
 done
+# update 2024-09-27 21:06:54
