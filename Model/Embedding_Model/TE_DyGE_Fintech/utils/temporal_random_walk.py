@@ -70,4 +70,4 @@ class TemporalRandomWalk():
 
         return walks
 
-    
+    # update 2024-10-05 08:34:42
