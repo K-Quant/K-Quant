@@ -81,7 +81,7 @@ class HIST(nn.Module):
         cos_similarity[cos_similarity != cos_similarity] = 0
         return cos_similarity
 
-    def forward(self, x, concept_matrix, market_value):
+    def forward(self, x, concept_matrix, market_value=None):
         # N = the number of stock in current slice
         # F = feature length
         # T = number of days, usually = 60, since F*T should be 360
@@ -96,10 +96,13 @@ class HIST(nn.Module):
 
         # Predefined Concept Module
 
-        market_value_matrix = market_value.reshape(market_value.shape[0], 1).repeat(1, concept_matrix.shape[1])
-        # make the market value matrix the same size as the concept matrix by repeat
-        # market value matrix shape: (N, number of pre define concepts)
-        stock_to_concept = concept_matrix * market_value_matrix
+        if market_value is not None:
+            market_value_matrix = market_value.reshape(market_value.shape[0], 1).repeat(1, concept_matrix.shape[1])
+            # make the market value matrix the same size as the concept matrix by repeat
+            # market value matrix shape: (N, number of pre define concepts)
+            stock_to_concept = concept_matrix * market_value_matrix
+        else:
+            stock_to_concept = concept_matrix
         # torch.sum generate (1, number of pre define concepts) -> repeat (N, number of predefine concepts)
         # 对应每个concept 得到其相关所有股票市值的和, sum在哪个维度上操作，哪个维度被压缩成1
         stock_to_concept_sum = torch.sum(stock_to_concept, 0).reshape(1, -1).repeat(stock_to_concept.shape[0], 1)
