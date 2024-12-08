@@ -133,3 +133,4 @@ class NodeMinibatchIterator(object):
         """ Reset batch number"""
         self.train_nodes =  self.graphs[self.num_time_steps-1].nodes()
         self.batch_num = 0
+# update 2024-12-08 22:26:45
