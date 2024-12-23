@@ -128,3 +128,4 @@ class DoubleAdapt(ForecastModel):
             X = self.teacher_x(X)
         return super().forward(X, *args, model=model), X
 
+# update 2024-12-24 05:57:37
