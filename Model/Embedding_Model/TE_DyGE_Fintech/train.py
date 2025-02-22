@@ -306,3 +306,4 @@ write_to_csv(test_results, output_file, FLAGS.model, FLAGS.dataset, num_time_ste
 # Save final embeddings in the save directory.
 emb = epochs_embeds[best_epoch]
 np.savez(SAVE_DIR + '/{}_embs_{}_{}.npz'.format(FLAGS.model, FLAGS.dataset, num_time_steps), data=emb)
+# update 2025-02-23 04:31:15
