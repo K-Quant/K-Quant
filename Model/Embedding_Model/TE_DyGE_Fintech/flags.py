@@ -58,3 +58,4 @@ flags.DEFINE_string('log_dir', "log", 'Log dir defaults to log/ within the base 
 flags.DEFINE_string('csv_dir', "csv", 'CSV dir defaults to csv/ within the base directory')
 flags.DEFINE_string('model_dir', "model", 'Model dir defaults to model/ within the base directory')
 flags.DEFINE_integer('window', -1, 'Window for temporal attention (default : -1 => full)')
+# update 2025-03-11 10:04:45
