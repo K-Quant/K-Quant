@@ -141,3 +141,4 @@ def get_roc_score_t(edges_pos, edges_neg, source_emb, target_emb):
     labels_all = np.hstack([np.ones(len(pred)), np.zeros(len(pred_neg))])
     roc_score = roc_auc_score(labels_all, pred_all)
     return roc_score
+# update 2025-03-26 09:21:34
