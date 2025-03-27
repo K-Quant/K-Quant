@@ -164,3 +164,4 @@ class AutoCorrelationLayer(nn.Module):
         out = out.view(B, L, -1)
 
         return self.out_projection(out), attn
+# update 2025-03-27 12:39:11
