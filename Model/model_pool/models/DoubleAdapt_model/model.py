@@ -527,3 +527,4 @@ class DoubleAdaptManager(IncrementalManager):
         self.framework.opt.step()
         return output
 # update 2023-12-27 00:27:00
+# update 2025-03-30 06:56:14
