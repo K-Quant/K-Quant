@@ -45,3 +45,4 @@ def metric_fn(preds):
     rank_ic = preds.groupby(level='datetime').apply(lambda x: x.label.corr(x.score, method='spearman')).mean()
 
     return precision, recall, ic, rank_ic
+# update 2025-05-29 16:04:58
