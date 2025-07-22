@@ -885,3 +885,4 @@ class KEnhance(nn.Module):
         pred = self.fc(hidden).squeeze()
         return pred
 # update 2024-06-29 03:38:18
+# update 2025-07-22 11:34:27
