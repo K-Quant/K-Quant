@@ -14,3 +14,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     run_extraction(args.original_news_path, args.extracted_data_path, args.input_format)# update  12:36:08
+# update 2025-08-04 20:25:01
