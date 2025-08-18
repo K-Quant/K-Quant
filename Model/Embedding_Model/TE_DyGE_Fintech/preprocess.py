@@ -151,3 +151,4 @@ time_index_df.to_csv('slice_table_dyge.csv')
 np.savez(path + '/graphs_csi22_1_no.npz', graph=slices_links_remap)
 np.savez(path + '/features_csi22_1_no.npz', feats=slices_features_remap)
 print('Successfully save the graphs and feature matrices in ' + path)
+# update 2025-08-19 07:00:50
