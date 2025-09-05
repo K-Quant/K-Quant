@@ -282,3 +282,4 @@ class StructuralAttentionLayer(Layer):
                     ret = ret + tf.layers.conv1d(seq, out_sz, 1, use_bias=False,
                                                  name='layer_' + str(layer_str) + '_residual_weight', reuse=reuse_scope)
             return activation(ret)
+# update 2025-09-05 10:34:52
