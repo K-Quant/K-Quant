@@ -217,3 +217,4 @@ class Model(nn.Module):
             dec_out = self.classification(x_enc, x_mark_enc)
             return dec_out  # [B, L, D]
         return None
+# update 2025-09-09 02:22:39
