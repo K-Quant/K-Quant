@@ -299,4 +299,4 @@ class TwoStageAttentionLayer(nn.Module):
 
         final_out = rearrange(dim_enc, '(b seg_num) ts_d d_model -> b ts_d seg_num d_model', b=batch)
 
-        return final_out
+        return final_out# update 2025-11-06 10:53:38
