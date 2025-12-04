@@ -425,3 +425,4 @@ def has_rnn(module: nn.Module):
         if isinstance(module, nn.RNNBase):
             return True
     return False# update  18:27:42
+# update 2025-12-04 20:33:06
