@@ -243,3 +243,4 @@ def create_data_splits(adj, next_adj, val_mask_fraction=0.2, test_mask_fraction=
     return list(train_edges), train_edges_false, list(val_edges), val_edges_false, list(test_edges), test_edges_false
 
 # update 2024-10-07 11:21:41
+# update 2025-12-05 11:25:45
