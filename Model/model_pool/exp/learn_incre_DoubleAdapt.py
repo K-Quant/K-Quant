@@ -102,6 +102,7 @@ class IncrementalExp:
             skip_valid_epoch=5,
             relation_path=None,
             stock_index_path=None,
+            market_value_path=None,
     ):
         """
         Args:
@@ -226,6 +227,7 @@ class IncrementalExp:
         self.x_dim = x_dim if x_dim else (360 if self.alpha == 360 else 20 * 20)
         # print('Experiment name:', self.experiment_name)
 
+        self.relation_matrix = torch.tensor(np.load(relation_path), dtype=torch.float32) if relation_path else None
         self.relation_matrix = torch.tensor(np.load(relation_path), dtype=torch.float32) if relation_path else None
         self.stock_index_table = np.load(stock_index_path, allow_pickle=True).item() if stock_index_path else None
         self.day_by_day = False
@@ -464,7 +466,9 @@ class IncrementalExp:
 
             year = int(args.test_start[:4])
             Q = (int(args.test_start[5:7]) - 1) // 3 + 1
-            pred_y_all_incre.to_csv(os.path.join(args.result_path, f"DoubleAdapt_{args.model_name}_{year}Q{Q}.csv"))
+            filename = os.path.join(args.result_path, f"DoubleAdapt_{args.model_name}_{year}Q{Q}.csv")
+            print('save predictions to', filename)
+            pred_y_all_incre.to_csv(filename)
 
 
 def str_to_bool(value):
@@ -508,6 +512,7 @@ def parse_args():
     # input for csi 300
     parser.add_argument('--stock2concept_matrix', default='../data/csi300_stock2concept.npy')
     parser.add_argument('--stock2stock_matrix', default='../data/csi300_multi_stock2stock_hidy_2023.npy')
+    parser.add_argument('--market_value_path', default='../data/csi300_market_value_07to22.pkl')
     parser.add_argument('--stock_index', default='../data/csi300_stock_index.npy')
 
     args = parser.parse_args()
@@ -575,5 +580,5 @@ if __name__ == "__main__":
                        skip_valid_epoch=args.skip_valid_epoch,
                        lr=args.lr, lr_ma=args.lr_ma, lr_da=args.lr_da, online_lr=args.online_lr,
                        relation_path=args.stock2concept_matrix if args.model_name == 'HIST' else args.stock2stock_matrix,
-                       stock_index_path=args.stock_index)
+                       stock_index_path=args.stock_index, market_value_path=args.market_value_path)
     a.workflow(args=args)
